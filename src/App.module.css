@@ -1,0 +1,23 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.main {
+  flex: 1;
+  padding: var(--space-6);
+}
+
+.title {
+  margin: 0;
+  color: var(--color-accent);
+  font-size: var(--font-size-xl);
+}
+
+.footer {
+  padding: var(--space-3) var(--space-6);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  border-top: 1px solid var(--color-border);
+}
