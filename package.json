@@ -1,7 +1,7 @@
 {
   "name": "kalendar-vystavok",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Exhibition calendar: edit in the browser, print as A3/A4 PDF.",
   "type": "module",
   "engines": {
@@ -20,11 +20,13 @@
   },
   "dependencies": {
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "zustand": "^5.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.65.1",
+    "@types/fontkit": "^2.0.9",
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
@@ -34,6 +36,8 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.8",
+    "flag-icons": "^7.6.0",
+    "fontkit": "^3.0.0",
     "globals": "^17.14.0",
     "prettier": "^3.10.1",
     "typescript": "^6.0.3",

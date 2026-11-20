@@ -1,0 +1,14 @@
+/* PT Sans Narrow (SIL OFL 1.1, see OFL.txt), bundled: no external fonts at runtime (SPEC 7.1). */
+@font-face {
+  font-family: 'PT Sans Narrow';
+  src: url('./PTSansNarrow-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'PT Sans Narrow';
+  src: url('./PTSansNarrow-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
