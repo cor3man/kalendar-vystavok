@@ -1,0 +1,117 @@
+{
+  "countries": [
+    { "id": "ru", "name": "Россия" },
+    { "id": "by", "name": "Беларусь" },
+    { "id": "kz", "name": "Казахстан" },
+    { "id": "uz", "name": "Узбекистан" },
+    { "id": "az", "name": "Азербайджан" },
+    { "id": "cn", "name": "Китай" },
+    { "id": "de", "name": "Германия" },
+    { "id": "tr", "name": "Турция" },
+    { "id": "ae", "name": "ОАЭ" },
+    { "id": "kg", "name": "Кыргызстан" },
+    { "id": "am", "name": "Армения" },
+    { "id": "ge", "name": "Грузия" },
+    { "id": "tj", "name": "Таджикистан" },
+    { "id": "tm", "name": "Туркменистан" },
+    { "id": "pl", "name": "Польша" },
+    { "id": "lt", "name": "Литва" },
+    { "id": "lv", "name": "Латвия" },
+    { "id": "it", "name": "Италия" },
+    { "id": "fr", "name": "Франция" },
+    { "id": "es", "name": "Испания" },
+    { "id": "nl", "name": "Нидерланды" },
+    { "id": "in", "name": "Индия" },
+    { "id": "ir", "name": "Иран" },
+    { "id": "rs", "name": "Сербия" },
+    { "id": "eg", "name": "Египет" },
+    { "id": "vn", "name": "Вьетнам" },
+    { "id": "us", "name": "США" },
+    { "id": "gb", "name": "Великобритания" },
+    { "id": "mn", "name": "Монголия" },
+    { "id": "sa", "name": "Саудовская Аравия" }
+  ],
+  "exhibitions": [
+    {
+      "key": "transrossiya",
+      "name": "ТрансРоссия",
+      "start": "2027-03-16",
+      "end": "2027-03-18",
+      "city": "Москва",
+      "countryId": "ru",
+      "color": "lilac"
+    },
+    {
+      "key": "tl-forum",
+      "name": "Транспорт и Логистика форум",
+      "start": "2027-03-31",
+      "end": "2027-04-02",
+      "city": "СПб",
+      "countryId": "ru",
+      "color": "lightLilac"
+    },
+    {
+      "key": "transport-logistic",
+      "name": "Transport logistic",
+      "start": "2027-04-26",
+      "end": "2027-04-29",
+      "city": "Мюнхен",
+      "countryId": "de",
+      "color": "grey"
+    },
+    {
+      "key": "logistikaexpo",
+      "name": "ЛогистикаЭкспо",
+      "start": "2027-05-25",
+      "end": "2027-05-28",
+      "city": "Москва",
+      "countryId": "ru",
+      "color": "lilac"
+    },
+    {
+      "key": "translogistica-caspian",
+      "name": "TransLogistica Caspian",
+      "start": "2027-06-02",
+      "end": "2027-06-04",
+      "city": "Baku",
+      "countryId": "az",
+      "color": "grey"
+    },
+    {
+      "key": "cemat-asia",
+      "name": "CeMAT Asia",
+      "start": "2027-06-03",
+      "end": "2027-06-05",
+      "city": "Китай",
+      "countryId": "cn",
+      "color": "darkGrey"
+    },
+    {
+      "key": "tl-astana",
+      "name": "Транспорт и Логистика",
+      "start": "2027-10-13",
+      "end": "2027-10-15",
+      "city": "Астана",
+      "countryId": "kz",
+      "color": "lightBlue"
+    },
+    {
+      "key": "translogistica",
+      "name": "TransLogistica",
+      "start": "2027-11-09",
+      "end": "2027-11-11",
+      "city": "Ташкент",
+      "countryId": "uz",
+      "color": "lightBlue"
+    },
+    {
+      "key": "transport-rossii",
+      "name": "Транспорт России",
+      "start": "2027-11-17",
+      "end": "2027-11-19",
+      "city": "Москва",
+      "countryId": "ru",
+      "color": "lightLilac"
+    }
+  ]
+}
