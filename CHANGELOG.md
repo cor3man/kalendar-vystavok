@@ -3,6 +3,30 @@
 All notable changes to this project are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [SemVer](https://semver.org/).
 
+## [0.2.0] — 2026-11-20 — M1 Domain and layout engine
+
+### Added
+
+- `src/domain`: ISO date arithmetic without `Date` objects, Orthodox Easter, Belarus default
+  holidays (Appendix B), palette (Appendix C), events → segments → clusters → lanes (SPEC 3.5),
+  name-uniqueness and in-use rules.
+- `src/layout`: page formats and geometry (3.1–3.4), text wrapping and fitting with the full
+  fallback order (3.6), `layoutCalendar` → `LayoutResult` with hit rectangles, grid geometry and
+  warnings (5.7). Pure and deterministic; the `TextMeasurer` and export date are injected.
+- Seed data (Appendix A) in `src/storage/seed.json`; 30 country flags from `flag-icons` (MIT)
+  generated into `src/storage/seedFlags.json` by `scripts/genFlags.ts`.
+- PT Sans Narrow Regular/Bold TTF + OFL licence bundled in `src/render/fonts/`.
+- Read-only SVG preview of the seed data in all four formats, with year and format selection
+  in the toolbar; minimal Zustand store (`zustand` runtime dependency, SPEC 6.1).
+- Unit tests for dates, Easter 2020–2035, holidays, segments and lanes, text fitting (every
+  fallback step), layout invariants, the reference cells and seed data; 90 % line coverage
+  threshold (currently 100 %). E2E tests render each format.
+
+### Demo
+
+Open the app: the 2027 year view shows the nine reference exhibitions in the same cells as
+`docs/reference/KALENDAR_2027.pdf`; switch the format and year in the toolbar.
+
 ## [0.1.0] — 2026-11-19 — M0 Project skeleton
 
 ### Added
