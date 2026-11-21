@@ -166,6 +166,7 @@ export function EventDialog({ request, data, onClose }: EventDialogProps) {
     <Dialog
       title={title}
       testId="event-dialog"
+      wide={editingId !== null}
       onClose={onClose}
       actions={
         <div className={styles.dialogButtons}>
