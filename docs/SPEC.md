@@ -257,8 +257,8 @@ The main screen is the calendar itself: the secretary selects days with the mous
 | Unsupported | Browser without File System Access: says to open the app in Chrome or Edge |
 | Main | Toolbar, calendar preview, warnings panel, event list |
 | Event dialog | Add / edit one event |
-| Catalogue | Exhibitions and countries, tabs |
-| Holidays | Holiday list for the selected year(s) |
+| Catalogue | Exhibitions and countries, tabs. A modal dialog opened by "Каталог" |
+| Holidays | Holiday list for the selected year(s). A modal dialog opened by "Праздники" |
 | Data | Folder name, last save, backups list, export / import, change folder, app version. A modal dialog opened by "Данные" |
 
 ### 5.2 Main screen
@@ -289,7 +289,7 @@ The main screen is the calendar itself: the secretary selects days with the mous
 | Held | Checkbox "Выставка проведена" |  |
 | Note | Text area | Internal, not printed |
 
-Buttons: "Сохранить" (Enter), "Отмена" (Esc); in edit mode also "Удалить" and "Копировать на следующий год" (same weekdays a year later, i.e. +364 days, shown for confirmation and editable). Delete needs no confirmation dialog because it can be undone; a toast "Удалено. Отменить" appears for 8 s.
+Buttons: "Сохранить" (Enter), "Отмена" (Esc); in edit mode also "Удалить" and "Копировать на следующий год" (same weekdays a year later, i.e. +364 days, shown for confirmation and editable; every field is copied except "held", which starts unchecked). Delete needs no confirmation dialog because it can be undone; a toast "Удалено. Отменить" appears for 8 s and disappears earlier on the next data change, so it always undoes the delete.
 
 ### 5.5 Catalogue
 
@@ -298,8 +298,8 @@ Buttons: "Сохранить" (Enter), "Отмена" (Esc); in edit mode also "
 
 ### 5.6 Undo and redo
 
-- Every data change (event, exhibition, country, holiday, import) is one undoable step; the last 20 are kept in memory for the session.
-- Ctrl+Z / Ctrl+Y (Ctrl+Shift+Z) and toolbar buttons. Undo is saved like any other change.
+- Every data change (event, exhibition, country, holiday, import, backup restore) is one undoable step; the last 20 are kept in memory for the session. Creating an exhibition from the event dialog together with its event is one step. Year and format changes are not undo steps (4.3).
+- Ctrl+Z / Ctrl+Y (Ctrl+Shift+Z) and toolbar buttons. Undo is saved like any other change. The shortcuts are ignored inside text fields (they keep their own text undo) and while a dialog is open.
 
 ### 5.7 Warnings
 
@@ -497,7 +497,7 @@ The app must never lose data, must print exactly what the preview shows, and mus
 - Each format renders; "Скачать PDF" downloads a file whose page size matches 3.1 and whose text includes the event names (checked with a PDF parser, not pixels).
 - Second tab shows the read-only message.
 - Data folder: create, autosave, resume after reload; existing data never overwritten; invalid file → restore backup; external change → reload / overwrite; export and import; unsupported browser; seed loaded only on create.
-- Offline: after the first load, reload with network off still works.
+- Offline: after the first load, reload with network off still works (written with the PWA in M5).
 
 **Manual checks before each release:** print one A3 and one A4 page on the office printer; open the app on the secretary's PC.
 
@@ -536,7 +536,7 @@ The agent builds the app in six milestones, in order; each ends with a green CI 
 
 - [ ] Day selection (5.3), event dialog (5.4), catalogue (5.5), holidays (5.8).
 - [ ] Undo / redo and the delete toast (5.6).
-- [ ] Warnings panel (5.7); all e2e flows of 7.2 pass.
+- [ ] Warnings panel (5.7); all e2e flows of 7.2 pass (the offline flow comes with the PWA in M5).
 
 ### M5 — Release 1.0
 
@@ -602,7 +602,7 @@ Each row also creates its catalogue exhibition (short name = name, defaults = th
 | Оранжевый | `#F8D2A6` |
 | Бирюзовый | `#BFE6E0` |
 
-Event text is always `#151515`; a custom colour darker than 45 % luminance shows a contrast warning in the dialog.
+Event text is always `#151515`; a custom colour darker than CIE lightness L* 45 (of 100) shows a contrast warning in the dialog. All palette colours are lighter than that.
 
 ## Appendix D — CLAUDE.md for the coding agent
 

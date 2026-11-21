@@ -5,6 +5,46 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-11-21 — M4 Editing
+
+### Added
+
+- Day selection on the calendar (SPEC 5.3): press on a day, drag, release to add an exhibition
+  for those dates, also across months; selected days are highlighted with a tooltip ("31 марта –
+  2 апреля 2027"); Esc cancels. A click on an exhibition opens it, a click on an empty day starts
+  a one-day exhibition. Works with mouse, pen and touch, and after scrolling or resizing.
+- Event dialog (5.4): exhibition combobox with search and "Создать выставку «…»", dates (swapped
+  when reversed), city with suggestions, country with flags, 10 colours plus a custom colour with
+  a warning for dark colours, "Выставка проведена", note. "Удалить" with a toast "Удалено.
+  Отменить" (8 s) and "Копировать на следующий год" (+364 days, not held, editable).
+- Catalogue (5.5): exhibitions and countries in tabs; add, edit, delete; logo and flag upload
+  (PNG, JPG, SVG; resized to 600 × 300 / 160 × 120, max 200 KB); live preview of the short name in
+  a 3-day cell; an exhibition or country in use cannot be deleted and the app lists the events.
+- Holidays (5.8): table of the visible years; add, change the label, delete; "Заполнить
+  праздниками Беларуси" without duplicating dates.
+- Undo / redo of the last 20 changes (5.6): toolbar buttons, Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z.
+  Import and backup restore can be undone too.
+- Warnings panel (5.7) and the event list of the visible period (5.2) under the calendar; a
+  click opens the event (or the holidays for "Нет праздников на год").
+- Toolbar: "+ Выставка", undo / redo, "Каталог", "Праздники".
+- Unit tests for the edit rules, undo history, date ranges in words, colour lightness, hit-test,
+  selection geometry and the short-name preview; e2e tests for every editing flow of SPEC 7.2.
+
+### Changed
+
+- SPEC 5.1, 5.4, 5.6, 7.2, §8 M4 and Appendix C updated with the approved M4 decisions: catalogue
+  and holidays are modal dialogs; a copy is not held; the dark-colour warning uses CIE lightness
+  L* < 45; the offline e2e test comes with the PWA in M5.
+- A read-only window (other tab, newer file) disables all editing.
+
+### Demo
+
+Open the app with a data folder. Drag over 10–12 August: the dialog opens with these dates; type
+"Trans", pick "Transport logistic", save: it appears in the calendar and the list. Click
+"ТрансРоссия", tick "Выставка проведена": a check mark appears. Delete it and press "Отменить" in
+the toast. "Каталог" adds a country with a flag and an exhibition with a logo; "Праздники" fills
+the Belarus holidays of a new year.
+
 ## [0.4.0] — 2026-11-21 — M3 Storage
 
 ### Added
