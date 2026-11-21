@@ -52,3 +52,28 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+.end {
+  margin-left: auto;
+}
+
+.primary {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.button:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.status {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.status:empty {
+  display: none;
+}
