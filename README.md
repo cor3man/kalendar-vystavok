@@ -29,8 +29,10 @@ npm run dev                       # http://localhost:5173/kalendar-vystavok/
 | `npm run typecheck`    | TypeScript, no emit                                |
 | `npm run format`       | Prettier, write                                    |
 | `npm run format:check` | Prettier, check only (used in CI)                  |
+| `npm run check`        | lint, format check, typecheck, unit tests          |
 
-Before every commit: `lint`, `typecheck` and `test` must pass.
+Before every commit: `npm run check` must pass (it stops at the first failing step). Do not pipe
+it through `tail` or similar without `set -o pipefail`, or a failure is hidden.
 
 ### Testing the data folder
 
