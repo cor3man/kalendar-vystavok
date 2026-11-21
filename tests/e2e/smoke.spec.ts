@@ -1,19 +1,12 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import pkg from '../../package.json' with { type: 'json' };
 import { ru } from '../../src/i18n/ru.ts';
+import { collectErrors, openWithSeed } from './helpers.ts';
 import seed from '../../src/storage/seed.json' with { type: 'json' };
-
-function collectErrors(page: Page): string[] {
-  const errors: string[] = [];
-  page.on('console', (msg) => {
-    if (msg.type() === 'error') errors.push(msg.text());
-  });
-  return errors;
-}
 
 test('shows the app name and version', async ({ page }) => {
   const errors = collectErrors(page);
-  await page.goto('./');
+  await openWithSeed(page);
 
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(ru.appName);
   await expect(page.getByTestId('app-version')).toHaveText(`v${pkg.version}`);
@@ -34,7 +27,7 @@ const cases = [
 for (const { format, title, cities } of cases) {
   test(`renders the seed preview in the ${format} format`, async ({ page }) => {
     const errors = collectErrors(page);
-    await page.goto('./');
+    await openWithSeed(page);
     await page.getByLabel(ru.toolbar.format).selectOption(format);
 
     const preview = page.getByTestId('calendar-preview');
@@ -51,7 +44,7 @@ for (const { format, title, cities } of cases) {
 }
 
 test('changes the year with the arrow buttons', async ({ page }) => {
-  await page.goto('./');
+  await openWithSeed(page);
   await page.getByRole('button', { name: ru.toolbar.nextYear }).click();
   await expect(page.getByRole('spinbutton')).toHaveValue('2028');
   await expect(

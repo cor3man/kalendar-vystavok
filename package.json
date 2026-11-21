@@ -1,7 +1,7 @@
 {
   "name": "kalendar-vystavok",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Exhibition calendar: edit in the browser, print as A3/A4 PDF.",
   "type": "module",
   "engines": {
@@ -16,12 +16,14 @@
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "check": "npm run lint && npm run format:check && npm run typecheck && npm test"
   },
   "dependencies": {
     "jspdf": "^4.2.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "zod": "^4.6.7",
     "zustand": "^5.1.0"
   },
   "devDependencies": {

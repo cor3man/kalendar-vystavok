@@ -5,7 +5,7 @@ import type { TextMeasurer } from '../../layout/measure.ts';
 import { getCanvasMeasurer } from '../../render/canvasMeasurer.ts';
 import { CalendarSvg } from '../../render/svg/CalendarSvg.tsx';
 import { todayISO } from '../../state/clock.ts';
-import { useCalendarStore } from '../../state/store.ts';
+import { useCalendarStore } from '../../state/storeContext.ts';
 import styles from './CalendarPreview.module.css';
 
 /** Read-only preview of the page exactly as printed (SPEC 5.2). */
@@ -27,7 +27,7 @@ export function CalendarPreview() {
 
   const layout = useMemo(
     () =>
-      measurer === null
+      measurer === null || data === null
         ? null
         : layoutCalendar({ data, year, format, exportDate: todayISO(), measurer }),
     [data, year, format, measurer],
