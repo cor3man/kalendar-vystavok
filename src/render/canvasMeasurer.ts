@@ -20,10 +20,23 @@ export async function createCanvasMeasurer(): Promise<TextMeasurer> {
       let em = cache.get(key);
       if (em === undefined) {
         ctx.font = cssFont(bold);
+        // No kerning: jsPDF does not kern, so the layout must not either (SPEC 3.7).
+        ctx.fontKerning = 'none';
         em = ctx.measureText(text).width / REFERENCE_PX;
         cache.set(key, em);
       }
       return em * size;
     },
   };
+}
+
+let shared: Promise<TextMeasurer> | null = null;
+
+/** One measurer for the whole app, so the preview and the PDF export lay out identically. */
+export function getCanvasMeasurer(): Promise<TextMeasurer> {
+  shared ??= createCanvasMeasurer().catch((error: unknown) => {
+    shared = null;
+    throw error;
+  });
+  return shared;
 }

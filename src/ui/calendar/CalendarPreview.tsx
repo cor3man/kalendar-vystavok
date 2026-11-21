@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ru } from '../../i18n/ru.ts';
 import { layoutCalendar } from '../../layout/layout.ts';
 import type { TextMeasurer } from '../../layout/measure.ts';
-import { createCanvasMeasurer } from '../../render/canvasMeasurer.ts';
+import { getCanvasMeasurer } from '../../render/canvasMeasurer.ts';
 import { CalendarSvg } from '../../render/svg/CalendarSvg.tsx';
 import { todayISO } from '../../state/clock.ts';
 import { useCalendarStore } from '../../state/store.ts';
@@ -17,7 +17,7 @@ export function CalendarPreview() {
 
   useEffect(() => {
     let active = true;
-    void createCanvasMeasurer().then((m) => {
+    void getCanvasMeasurer().then((m) => {
       if (active) setMeasurer(m);
     });
     return () => {

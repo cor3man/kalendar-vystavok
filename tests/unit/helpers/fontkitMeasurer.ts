@@ -22,7 +22,8 @@ export function createFontkitMeasurer(): TextMeasurer {
       let units = cache.get(key);
       if (units === undefined) {
         const font = isBold ? bold : regular;
-        units = font.layout(text).advanceWidth / font.unitsPerEm;
+        // No kerning: jsPDF does not kern, so layout, preview and PDF all measure without it (SPEC 3.7).
+        units = font.layout(text, { kern: false }).advanceWidth / font.unitsPerEm;
         cache.set(key, units);
       }
       return units * size;
@@ -33,7 +34,7 @@ export function createFontkitMeasurer(): TextMeasurer {
 /** Vertical glyph extent of a text per em: top above the baseline and bottom below it (positive down). */
 export function glyphExtent(text: string, isBold: boolean): { above: number; below: number } {
   const font = isBold ? bold : regular;
-  const box = font.layout(text).bbox;
+  const box = font.layout(text, { kern: false }).bbox;
   return {
     above: Math.max(0, box.maxY) / font.unitsPerEm,
     below: Math.max(0, -box.minY) / font.unitsPerEm,
