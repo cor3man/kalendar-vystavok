@@ -5,13 +5,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 ## [Unreleased]
 
-### Changed
-
-- Held mark: drawn as a vector check-mark path (new `path` shape) sized to the name's cap height
-  and counted in wrapping; PT Sans Narrow has no ✓ glyph.
-- SPEC: approved M1 review decisions (clip on text shapes and the `path` shape in 6.3, sizes
-  in 3.2–3.3 and 3.6, held-mark rule, per-day lane width backlog item, seed dynamic import in M3).
-
 ## [0.4.0] — 2026-11-21 — M3 Storage
 
 ### Added
@@ -72,6 +65,10 @@ JSON and lists the backups. A second tab says "Приложение уже от�
 - Text is measured without kerning (canvas, fontkit test measurer, SVG preview) because jsPDF
   does not kern; preview and PDF now match glyph for glyph. SPEC 3.7 updated (approved).
 - One shared canvas measurer for the preview and the PDF export.
+- Held mark: drawn as a vector check-mark path (new `path` shape) sized to the name's cap height
+  and counted in wrapping; PT Sans Narrow has no ✓ glyph.
+- SPEC: approved M1 review decisions (clip on text shapes and the `path` shape in 6.3, sizes
+  in 3.2–3.3 and 3.6, held-mark rule, per-day lane width backlog item, seed dynamic import in M3).
 
 ### Demo
 
