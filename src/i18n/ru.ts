@@ -150,6 +150,7 @@ export const ru = {
     backups: 'Резервные копии',
     backupsHint: 'Хранятся 30 последних копий в папке backups.',
     noBackups: 'Резервных копий пока нет.',
+    sizeKb: (kb: number) => `${String(kb)} КБ`,
     restore: 'Восстановить',
     restoreConfirm: (stamp: string) =>
       `Заменить текущие данные резервной копией от ${stamp}? Текущие данные сначала будут сохранены в резервную копию.`,

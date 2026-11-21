@@ -3,6 +3,7 @@ import { FORMAT_IDS } from '../../layout/pageSpec.ts';
 import { MAX_YEAR, MIN_YEAR } from '../../state/store.ts';
 import { useCalendarStore } from '../../state/storeContext.ts';
 import type { FormatId } from '../../domain/types.ts';
+import { DataButton } from './DataButton.tsx';
 import { PdfActions } from './PdfActions.tsx';
 import { SaveStatus } from './SaveStatus.tsx';
 import styles from './Toolbar.module.css';
@@ -72,6 +73,7 @@ export function Toolbar() {
         </select>
       </label>
       <div className={styles.end}>
+        <DataButton />
         <SaveStatus />
         <PdfActions />
       </div>
