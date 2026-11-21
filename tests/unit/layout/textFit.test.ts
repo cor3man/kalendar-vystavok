@@ -1,13 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
-  displayName,
   fitSegment,
-  HELD_PREFIX,
+  heldMarkWidth,
   sizeSteps,
   wrapText,
   type FitInput,
 } from '../../../src/layout/textFit.ts';
-import type { ImageShape, Shape, TextShape } from '../../../src/layout/shapes.ts';
+import type { ImageShape, PathShape, Shape, TextShape } from '../../../src/layout/shapes.ts';
 import { createFixedMeasurer, createFontkitMeasurer } from '../helpers/fontkitMeasurer.ts';
 
 const fixed = createFixedMeasurer(0.5);
@@ -33,6 +32,20 @@ const texts = (shapes: Shape[]): TextShape[] =>
   shapes.filter((s): s is TextShape => s.kind === 'text');
 const images = (shapes: Shape[]): ImageShape[] =>
   shapes.filter((s): s is ImageShape => s.kind === 'image');
+const paths = (shapes: Shape[]): PathShape[] =>
+  shapes.filter((s): s is PathShape => s.kind === 'path');
+
+function extent(p: PathShape | undefined) {
+  const xs = (p?.points ?? []).map((q) => q.x);
+  const ys = (p?.points ?? []).map((q) => q.y);
+  const half = (p?.width ?? 0) / 2;
+  return {
+    left: Math.min(...xs) - half,
+    right: Math.max(...xs) + half,
+    top: Math.min(...ys) - half,
+    bottom: Math.max(...ys) + half,
+  };
+}
 
 describe('sizeSteps', () => {
   it('steps by 0.1 without float drift', () => {
@@ -61,13 +74,19 @@ describe('wrapText', () => {
     expect(wrapText('a b c d e', 1, true, 0.5, fixed, true)).toEqual(['a', 'b', 'c', 'd']);
   });
 
+  it('reserves the first-line indent (held mark) when wrapping', () => {
+    expect(wrapText('aa bb', 1, true, 2.5, fixed)).toEqual(['aa bb']);
+    expect(wrapText('aa bb', 1, true, 2.5, fixed, false, 1.5)).toEqual(['aa', 'bb']);
+    // The mark stays with the first word: if both do not fit, wrapping fails.
+    expect(wrapText('aa bb', 1, true, 2.5, fixed, false, 2)).toBeNull();
+    expect(wrapText('aa bb', 1, true, 2.5, fixed, true, 2)).toEqual(['aa', 'bb']);
+  });
+
   it('never leaves the held mark alone on a line', () => {
-    const name = displayName('Transport logistic', true);
-    expect(name.startsWith(HELD_PREFIX)).toBe(true);
     for (const width of [5, 8, 12, 20, 40]) {
-      const lines = wrapText(name, 3, true, width, fontkit, true) ?? [];
-      expect(lines[0]).not.toBe('✓');
-      expect(lines[0]?.startsWith(HELD_PREFIX)).toBe(true);
+      const indent = heldMarkWidth(3, fontkit);
+      const lines = wrapText('Transport logistic', 3, true, width, fontkit, true, indent) ?? [];
+      expect(lines[0]?.startsWith('Transport')).toBe(true);
     }
   });
 });
@@ -136,9 +155,33 @@ describe('fitSegment: horizontal layout', () => {
     expect(texts(r.shapes).map((t) => t.text)).toEqual(['Ab', 'Cd']);
   });
 
-  it('prefixes held events with the check mark', () => {
+  it('draws the held mark as a vector path before the name, sized to the cap height', () => {
     const r = fitSegment(input({ w: 30, days: 3, name: 'Abc', held: true, primary: null }), fixed);
-    expect(texts(r.shapes)[0]?.text).toBe(`${HELD_PREFIX}Abc`);
+    const [name] = texts(r.shapes);
+    expect(name?.text).toBe('Abc');
+    expect(paths(r.shapes)).toHaveLength(1);
+    const mark = paths(r.shapes)[0];
+    expect(mark).toMatchObject({ stroke: '#151515' });
+    const e = extent(mark);
+    const size = name?.size ?? 0;
+    const nameLeft = (name?.x ?? 0) - fixed.width('Abc', size, true);
+    expect(e.bottom - e.top).toBeCloseTo(0.7 * size);
+    expect(e.bottom).toBeCloseTo(name?.y ?? 0);
+    expect(e.right).toBeLessThan(nameLeft);
+    expect(nameLeft - e.left).toBeCloseTo(heldMarkWidth(size, fixed));
+    expect(e.left).toBeGreaterThanOrEqual(0);
+  });
+
+  it('counts the held mark in wrapping and size fitting', () => {
+    const base = { w: 7, days: 3, name: 'AAAA', primary: null };
+    expect(texts(fitSegment(input(base), fixed).shapes)[0]?.size).toBe(3.4);
+    // 'AAAA' is 2 em wide; with the mark (0.63 em + 0.5 em space) the largest fit is 2.2.
+    expect(texts(fitSegment(input({ ...base, held: true }), fixed).shapes)[0]?.size).toBe(2.2);
+  });
+
+  it('draws no mark for events that are not held', () => {
+    const r = fitSegment(input({ w: 30, days: 3, name: 'Abc', primary: null }), fixed);
+    expect(paths(r.shapes)).toHaveLength(0);
   });
 });
 
@@ -158,6 +201,19 @@ describe('fitSegment: fallback order', () => {
     expect((f?.y ?? 0) + (f?.h ?? 0)).toBeCloseTo(3 * ROW - 0.4);
   });
 
+  it('vertical: the held mark is rotated and sits before (below) the first line', () => {
+    const r = fitSegment(input({ w: 6, days: 3, held: true }), fixed);
+    expect(r.step).toBe('vertical');
+    const [first] = texts(r.shapes);
+    const e = extent(paths(r.shapes)[0]);
+    const size = first?.size ?? 0;
+    const textStart = (first?.y ?? 0) + fixed.width(first?.text ?? '', size, true);
+    expect(e.right - e.left).toBeCloseTo(0.7 * size);
+    expect(e.right).toBeCloseTo(first?.x ?? 0);
+    expect(e.top).toBeGreaterThan(textStart);
+    expect(e.bottom - textStart).toBeCloseTo(heldMarkWidth(size, fixed));
+  });
+
   it('step 3: vertical without the city', () => {
     const r = fitSegment(input({ w: 3, days: 3 }), fixed);
     expect(r.step).toBe('verticalNoCity');
@@ -170,6 +226,8 @@ describe('fitSegment: fallback order', () => {
     expect(r.step).toBe('clipped');
     const [t] = texts(r.shapes);
     expect(t).toMatchObject({ size: 1.5, rotate: 90, clip: { x: 0, y: 0, w: 1.5, h: 24 } });
+    const held = fitSegment(input({ w: 1.5, days: 3, held: true }), fixed);
+    expect(paths(held.shapes)[0]?.clip).toEqual({ x: 0, y: 0, w: 1.5, h: 24 });
     expect(images(r.shapes)).toHaveLength(1);
   });
 
