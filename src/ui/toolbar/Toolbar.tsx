@@ -1,8 +1,10 @@
 import { ru } from '../../i18n/ru.ts';
 import { FORMAT_IDS } from '../../layout/pageSpec.ts';
-import { MAX_YEAR, MIN_YEAR, useCalendarStore } from '../../state/store.ts';
+import { MAX_YEAR, MIN_YEAR } from '../../state/store.ts';
+import { useCalendarStore } from '../../state/storeContext.ts';
 import type { FormatId } from '../../domain/types.ts';
 import { PdfActions } from './PdfActions.tsx';
+import { SaveStatus } from './SaveStatus.tsx';
 import styles from './Toolbar.module.css';
 
 function isFormatId(value: string): value is FormatId {
@@ -70,6 +72,7 @@ export function Toolbar() {
         </select>
       </label>
       <div className={styles.end}>
+        <SaveStatus />
         <PdfActions />
       </div>
     </div>

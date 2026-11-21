@@ -6,6 +6,7 @@ import {
   type DataFolder,
   type FileStat,
   type FolderConnector,
+  systemClock,
 } from './folderStorage.ts';
 import type { ParseOptions } from './schema.ts';
 import type { Storage, StorageStatus } from './Storage.ts';
@@ -89,8 +90,6 @@ export interface MemoryStorageOptions {
   folder?: MemoryFolder;
   parseOptions?: ParseOptions;
 }
-
-export const systemClock: Clock = { now: () => Date.now() };
 
 export function createMemoryStorage(options: MemoryStorageOptions = {}): MemoryStorage {
   const clock = options.clock ?? systemClock;

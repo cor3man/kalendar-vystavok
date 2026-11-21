@@ -54,6 +54,8 @@ export interface Clock {
   now(): number;
 }
 
+export const systemClock: Clock = { now: () => Date.now() };
+
 const backupPath = (name: string) => `${BACKUP_DIR}/${name}`;
 
 /** `parseOptions` lets tests run the migration path with fake schema versions. */

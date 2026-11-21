@@ -4,30 +4,25 @@ import { layoutCalendar } from '../../layout/layout.ts';
 import { getCanvasMeasurer } from '../../render/canvasMeasurer.ts';
 import type { PdfFile } from '../../render/pdf/exportPdf.ts';
 import { todayISO } from '../../state/clock.ts';
-import { useCalendarStore } from '../../state/store.ts';
+import { useStoreApi } from '../../state/storeContext.ts';
+import { downloadBlob } from '../common/download.ts';
 import styles from './Toolbar.module.css';
 
 type Status = { kind: 'idle' } | { kind: 'busy' } | { kind: 'message'; text: string };
 
 function download({ fileName, blob }: PdfFile): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fileName;
-  a.click();
-  // Give the browser time to start the download before releasing the blob.
-  setTimeout(() => {
-    URL.revokeObjectURL(url);
-  }, 60_000);
+  downloadBlob(blob, fileName);
 }
 
 /** "Печать" and "Скачать PDF" (SPEC 3.7). The PDF draws the same layout as the preview. */
 export function PdfActions() {
+  const store = useStoreApi();
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const busy = status.kind === 'busy';
 
   async function build(): Promise<PdfFile> {
-    const { data, year, format } = useCalendarStore.getState();
+    const { data, year, format } = store.getState();
+    if (data === null) throw new Error('No data to export');
     const [measurer, { createPdf }] = await Promise.all([
       getCanvasMeasurer(),
       import('../../render/pdf/exportPdf.ts'),
