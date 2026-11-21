@@ -1,7 +1,13 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { CalendarStore } from './store.ts';
-import { StoreContext } from './storeContext.ts';
+import { StoreContext, UiContext } from './storeContext.ts';
+import { createUiStore } from './uiStore.ts';
 
 export function StoreProvider({ store, children }: { store: CalendarStore; children: ReactNode }) {
-  return <StoreContext value={store}>{children}</StoreContext>;
+  const [ui] = useState(createUiStore);
+  return (
+    <StoreContext value={store}>
+      <UiContext value={ui}>{children}</UiContext>
+    </StoreContext>
+  );
 }

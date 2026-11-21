@@ -7,7 +7,8 @@ import { ConflictDialog } from './ui/common/ConflictDialog.tsx';
 import { ReadOnlyBanner } from './ui/common/ReadOnlyBanner.tsx';
 import { SaveErrorBanner } from './ui/common/SaveErrorBanner.tsx';
 import { Toolbar } from './ui/toolbar/Toolbar.tsx';
-import { CalendarPreview } from './ui/calendar/CalendarPreview.tsx';
+import { EditingDialogs } from './ui/main/EditingDialogs.tsx';
+import { MainScreen } from './ui/main/MainScreen.tsx';
 import { InvalidFileScreen } from './ui/start/InvalidFileScreen.tsx';
 import { StartScreen } from './ui/start/StartScreen.tsx';
 import { UnsupportedScreen } from './ui/start/UnsupportedScreen.tsx';
@@ -29,7 +30,7 @@ function Screen() {
     case 'invalid':
       return <InvalidFileScreen issues={phase.issues} backup={phase.backup} />;
     case 'ready':
-      return <CalendarPreview />;
+      return <MainScreen />;
   }
 }
 
@@ -46,6 +47,7 @@ export function App() {
       <main className={styles.main}>
         <Screen />
       </main>
+      {ready && <EditingDialogs />}
       <ConflictDialog />
       <footer className={styles.footer}>
         {ru.versionLabel} <span data-testid="app-version">{formatVersion(appVersion)}</span>

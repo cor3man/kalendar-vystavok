@@ -1,46 +1,41 @@
-import { useEffect, useMemo, useState } from 'react';
+import type { Id, ISODate } from '../../domain/types.ts';
 import { ru } from '../../i18n/ru.ts';
-import { layoutCalendar } from '../../layout/layout.ts';
-import type { TextMeasurer } from '../../layout/measure.ts';
-import { getCanvasMeasurer } from '../../render/canvasMeasurer.ts';
+import type { LayoutResult } from '../../layout/shapes.ts';
 import { CalendarSvg } from '../../render/svg/CalendarSvg.tsx';
-import { todayISO } from '../../state/clock.ts';
-import { useCalendarStore } from '../../state/storeContext.ts';
 import styles from './CalendarPreview.module.css';
+import { SelectionLayer } from './SelectionLayer.tsx';
 
-/** Read-only preview of the page exactly as printed (SPEC 5.2). */
-export function CalendarPreview() {
-  const data = useCalendarStore((s) => s.data);
-  const year = useCalendarStore((s) => s.year);
-  const format = useCalendarStore((s) => s.format);
-  const [measurer, setMeasurer] = useState<TextMeasurer | null>(null);
+interface CalendarPreviewProps {
+  layout: LayoutResult | null;
+  /** False when read-only: the preview can be looked at and printed only. */
+  editable: boolean;
+  onCreate: (start: ISODate, end: ISODate) => void;
+  onEdit: (eventId: Id) => void;
+}
 
-  useEffect(() => {
-    let active = true;
-    void getCanvasMeasurer().then((m) => {
-      if (active) setMeasurer(m);
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const layout = useMemo(
-    () =>
-      measurer === null || data === null
-        ? null
-        : layoutCalendar({ data, year, format, exportDate: todayISO(), measurer }),
-    [data, year, format, measurer],
-  );
-
+/** The page exactly as printed (SPEC 5.2), with day selection on top (5.3). */
+export function CalendarPreview({ layout, editable, onCreate, onEdit }: CalendarPreviewProps) {
   return (
     <section className={styles.scroller} aria-label={ru.preview.label}>
       {layout === null ? (
         <p className={styles.loading}>{ru.preview.loading}</p>
       ) : (
-        <div className={styles.page} data-testid="calendar-preview" data-format={format}>
-          <CalendarSvg layout={layout} title={`${ru.preview.label} ${layout.page.title}`} />
-        </div>
+        <>
+          <div
+            className={styles.page}
+            data-testid="calendar-preview"
+            data-format={layout.page.formatId}
+          >
+            <CalendarSvg layout={layout} title={`${ru.preview.label} ${layout.page.title}`} />
+            <SelectionLayer
+              layout={layout}
+              enabled={editable}
+              onCreate={onCreate}
+              onEdit={onEdit}
+            />
+          </div>
+          {editable && <p className={styles.hint}>{ru.selection.hint}</p>}
+        </>
       )}
     </section>
   );

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { eventAt } from '../../../src/layout/hitTest.ts';
+import { eventAt, rangeRects } from '../../../src/layout/hitTest.ts';
 import { layoutCalendar } from '../../../src/layout/layout.ts';
 import { pageGeometry, SIZES } from '../../../src/layout/pageSpec.ts';
 import type { TextShape } from '../../../src/layout/shapes.ts';
@@ -33,6 +33,26 @@ describe('eventAt', () => {
     });
     for (const h of layout.hits)
       expect(eventAt(layout.hits, h.x + h.w / 2, h.y + h.h / 2)).toBe(h.eventId);
+  });
+});
+
+describe('rangeRects', () => {
+  it('covers a range across a month boundary, in either order', () => {
+    const g = pageGeometry('year', 2027);
+    const grid = {
+      x: g.grid.x,
+      y: g.grid.y,
+      colW: g.colW,
+      rowH: g.rowH,
+      rows: 31 as const,
+      months: g.months,
+    };
+    const rects = rangeRects(grid, '2027-04-02', '2027-03-31');
+    expect(rects).toEqual([
+      { x: g.grid.x + 2 * g.colW, y: g.grid.y + 30 * g.rowH, w: g.colW, h: g.rowH },
+      { x: g.grid.x + 3 * g.colW, y: g.grid.y, w: g.colW, h: 2 * g.rowH },
+    ]);
+    expect(rangeRects(grid, '2030-01-01', '2030-01-02')).toEqual([]);
   });
 });
 

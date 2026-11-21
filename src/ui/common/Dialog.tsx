@@ -9,13 +9,14 @@ interface DialogProps {
   /** Buttons, right-aligned at the bottom. */
   actions?: ReactNode;
   testId?: string;
+  wide?: boolean;
 }
 
 /**
  * Modal dialog on the native <dialog>: focus is trapped while open and returned to the element
  * that had it before (SPEC 5.9).
  */
-export function Dialog({ title, onClose, children, actions, testId }: DialogProps) {
+export function Dialog({ title, onClose, children, actions, testId, wide = false }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
 
@@ -33,7 +34,7 @@ export function Dialog({ title, onClose, children, actions, testId }: DialogProp
   return (
     <dialog
       ref={ref}
-      className={styles.dialog}
+      className={wide ? [styles.dialog, styles.wide].join(' ') : styles.dialog}
       aria-labelledby={titleId}
       data-testid={testId}
       onCancel={(e) => {

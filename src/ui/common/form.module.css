@@ -1,0 +1,92 @@
+/* Form fields shared by the editing dialogs. */
+.form {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--space-3);
+}
+
+.field {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.input {
+  width: 100%;
+  font: inherit;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.input:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+textarea.input {
+  resize: vertical;
+}
+
+.check {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.error {
+  margin: 0;
+  color: #b00020;
+  font-size: var(--font-size-sm);
+}
+
+.warning {
+  margin: 0;
+  color: #8a5300;
+  font-size: var(--font-size-sm);
+}
+
+.swatch {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid rgb(0 0 0 / 25%);
+  border-radius: 3px;
+  vertical-align: middle;
+}
+
+.thumb {
+  max-width: 3rem;
+  max-height: 1.5rem;
+  vertical-align: middle;
+  border: 1px solid #808080;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.fileInput {
+  display: none;
+}
+
+.spacer {
+  flex: 1;
+}
