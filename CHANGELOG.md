@@ -5,12 +5,43 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-11-21 — M3 Storage
+
+### Added
+
+- Data folder (SPEC 4.2): start screen with "Создать новую папку данных" / "Открыть
+  существующую", one-click "Продолжить работу" for the remembered folder (handle in IndexedDB),
+  "Выбрать другую папку". Creating never overwrites a folder that already has data. Browsers
+  without File System Access get the "unsupported" screen.
+- Autosave (4.3), debounced 800 ms, with a status in the toolbar. Writes are atomic
+  (`createWritable`). Backups: one on every app start, at most one per 10 minutes while
+  editing, newest 30 kept. External changes are detected by `lastModified`; autosave stops and
+  asks to reload from disk or overwrite. A failed save keeps the data in memory, shows a banner
+  with "Скачать резервную копию" and retries on the next change. The app saves when the tab is
+  hidden and warns before closing with unsaved changes.
+- zod schema of the data file and a migrations framework (4.4, 4.5). An invalid file is never
+  overwritten: the app offers the newest valid backup and keeps the broken file as a
+  `kalendar-data_invalid_…` copy. A file from a newer app version opens read-only.
+- One tab at a time (4.6): a second tab holds no Web Lock and stays read-only.
+- Data screen ("Данные"): folder, last save, version, backups with restore, export to JSON,
+  import with a summary and confirmation (4.7), change folder.
+- `memoryStorage` for unit and e2e tests; e2e tests on the real adapter with an OPFS folder.
+- Dependency: `zod` (runtime, SPEC 6.1).
+
 ### Changed
 
-- Held mark: drawn as a vector check-mark path (new `path` shape) sized to the name's cap height
-  and counted in wrapping; PT Sans Narrow has no ✓ glyph.
-- SPEC: approved M1 review decisions (clip on text shapes and the `path` shape in 6.3, sizes
-  in 3.2–3.3 and 3.6, held-mark rule, per-day lane width backlog item, seed dynamic import in M3).
+- The seed data (with flags) is loaded with a dynamic import, only when a new folder is
+  created; it is now a separate 432 KB chunk instead of part of the main bundle.
+- The year and format are saved in the data file's `settings`.
+- SPEC 4.2–4.7, 5.1, 6.3 and 7.2 updated with the approved M3 decisions, including the
+  extended `Storage` interface.
+
+### Demo
+
+Open the app in Chrome, choose "Создать новую папку данных" and pick an empty folder: the
+seed calendar appears and `kalendar-data.json` is written there. Change the year, reload, press
+"Продолжить работу": the year is kept and `backups/` has a copy. "Данные" exports and imports
+JSON and lists the backups. A second tab says "Приложение уже открыто в другом окне".
 
 ## [0.3.0] — 2026-11-21 — M2 PDF export
 
@@ -34,6 +65,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 - Text is measured without kerning (canvas, fontkit test measurer, SVG preview) because jsPDF
   does not kern; preview and PDF now match glyph for glyph. SPEC 3.7 updated (approved).
 - One shared canvas measurer for the preview and the PDF export.
+- Held mark: drawn as a vector check-mark path (new `path` shape) sized to the name's cap height
+  and counted in wrapping; PT Sans Narrow has no ✓ glyph.
+- SPEC: approved M1 review decisions (clip on text shapes and the `path` shape in 6.3, sizes
+  in 3.2–3.3 and 3.6, held-mark rule, per-day lane width backlog item, seed dynamic import in M3).
 
 ### Demo
 

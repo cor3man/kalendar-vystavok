@@ -29,8 +29,23 @@ npm run dev                       # http://localhost:5173/kalendar-vystavok/
 | `npm run typecheck`    | TypeScript, no emit                                |
 | `npm run format`       | Prettier, write                                    |
 | `npm run format:check` | Prettier, check only (used in CI)                  |
+| `npm run check`        | lint, format check, typecheck, unit tests          |
 
-Before every commit: `lint`, `typecheck` and `test` must pass.
+Before every commit: `npm run check` must pass (it stops at the first failing step). Do not pipe
+it through `tail` or similar without `set -o pipefail`, or a failure is hidden.
+
+### Testing the data folder
+
+The app keeps its data in a folder picked through the File System Access API (SPEC 4.2), which
+Playwright cannot drive. E2E tests therefore either
+
+- inject in-memory storage with an init script:
+  `window.__KALENDAR_TEST__ = { storage: 'memory' }` (see `tests/e2e/helpers.ts`), or
+- stub `showDirectoryPicker` to return a folder of the origin private file system, so the real
+  adapter, permissions and atomic writes run (see `tests/e2e/storage.spec.ts`).
+
+The flag is not reachable from a URL. E2E specs have their own `tsconfig.e2e.json` with DOM
+types, because code passed to `page.evaluate` runs in the browser.
 
 ## Project layout
 

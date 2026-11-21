@@ -1,7 +1,8 @@
 import { readFile } from 'node:fs/promises';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { ru } from '../../src/i18n/ru.ts';
+import { collectErrors, openWithSeed } from './helpers.ts';
 import seed from '../../src/storage/seed.json' with { type: 'json' };
 
 const MM_PER_PT = 25.4 / 72;
@@ -38,18 +39,10 @@ function words(text: string): string[] {
   return text.split(/\s+/).filter((w) => w !== '');
 }
 
-function collectErrors(page: Page): string[] {
-  const errors: string[] = [];
-  page.on('console', (msg) => {
-    if (msg.type() === 'error') errors.push(msg.text());
-  });
-  return errors;
-}
-
 for (const { format, file, events } of cases) {
   test(`downloads the ${format} PDF with the page size and event names`, async ({ page }) => {
     const errors = collectErrors(page);
-    await page.goto('./');
+    await openWithSeed(page);
     await page.getByLabel(ru.toolbar.format).selectOption(format);
     await expect(page.getByTestId('calendar-preview')).toHaveAttribute('data-format', format);
 
@@ -74,7 +67,7 @@ for (const { format, file, events } of cases) {
 
 test('"Печать" opens the PDF in a new tab', async ({ page, context }) => {
   const errors = collectErrors(page);
-  await page.goto('./');
+  await openWithSeed(page);
   await expect(page.getByTestId('calendar-preview')).toBeVisible();
 
   const opening = context.waitForEvent('page');

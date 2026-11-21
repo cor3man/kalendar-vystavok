@@ -5,8 +5,12 @@
 - Work milestone by milestone (SPEC §8). Stop after each milestone and report: what was done, how it was tested, what is open.
 
 ## Commands
-- npm run dev | build | preview | test | test:e2e | lint | typecheck | format
-- Before every commit: lint, typecheck, test must pass.
+- npm run dev | build | preview | test | test:e2e | lint | typecheck | format | check
+- Before every commit: lint, typecheck, test must pass. Run `npm run check` (lint, format check,
+  typecheck, unit tests; stops at the first failure) and commit only if it exits 0.
+- Never pipe a gate command through `tail`, `head`, `grep` or similar: the pipe returns the last
+  command's exit code and hides the failure. If output must be shortened, run it in bash with
+  `set -o pipefail` and check the exit code.
 
 ## Architecture rules
 - src/domain and src/layout are pure TypeScript: no DOM, no React, no browser APIs, no Date.now(). Inject the export date and the TextMeasurer.
