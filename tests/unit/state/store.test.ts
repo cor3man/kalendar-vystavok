@@ -176,9 +176,9 @@ describe('invalid and newer files', () => {
     expect(hasUnsavedChanges(store.getState())).toBe(true);
     await vi.advanceTimersByTimeAsync(800);
     expect(onDisk().settings).toEqual(base.settings);
-    expect(storage.folder.files.has('backups/kalendar-data_invalid_2027-03-14_10-00-05.json')).toBe(
-      true,
-    );
+    expect(
+      storage.folder.files.has('backups/kalendar-data_invalid_2027-03-14_10-00-05-000.json'),
+    ).toBe(true);
   });
 
   it('opens a newer file version read-only and never saves it', async () => {

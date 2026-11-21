@@ -15,7 +15,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
   without File System Access get the "unsupported" screen.
 - Autosave (4.3), debounced 800 ms, with a status in the toolbar. Writes are atomic
   (`createWritable`). Backups: one on every app start, at most one per 10 minutes while
-  editing, newest 30 kept. External changes are detected by `lastModified`; autosave stops and
+  editing, newest 30 kept; names carry milliseconds and a counter suffix (`_2`) if taken, so
+  an existing backup is never overwritten. External changes are detected by `lastModified`; autosave stops and
   asks to reload from disk or overwrite. A failed save keeps the data in memory, shows a banner
   with "Скачать резервную копию" and retries on the next change. The app saves when the tab is
   hidden and warns before closing with unsaved changes.

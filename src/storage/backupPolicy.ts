@@ -13,36 +13,52 @@ export type BackupKind = 'normal' | 'invalid';
 export interface BackupName {
   name: string;
   kind: BackupKind;
-  /** Local wall-clock time from the name, 'YYYY-MM-DD HH:mm:ss'; sorts chronologically. */
+  /** Local wall-clock time from the name, 'YYYY-MM-DD HH:mm:ss', shown to the user. */
   stamp: string;
+  /** Sort key with milliseconds and counter, 'YYYY-MM-DD HH:mm:ss.SSS NNNN'; sorts chronologically. */
+  order: string;
 }
 
-const NAME_RE = /^kalendar-data_(invalid_)?(\d{4}-\d{2}-\d{2})_(\d{2})-(\d{2})-(\d{2})\.json$/;
+const NAME_RE =
+  /^kalendar-data_(invalid_)?(\d{4}-\d{2}-\d{2})_(\d{2})-(\d{2})-(\d{2})-(\d{3})(?:_(\d+))?\.json$/;
 
 function pad2(n: number): string {
   return String(n).padStart(2, '0');
 }
 
 /**
- * Backup file name for a moment, e.g. `kalendar-data_2027-03-14_10-22-05.json`. Uses local time:
- * the name is a human-readable timestamp for the user, not calendar logic.
+ * Backup file name for a moment, e.g. `kalendar-data_2027-03-14_10-22-05-042.json` (milliseconds
+ * last). Uses local time: the name is a human-readable timestamp for the user, not calendar logic.
+ * `counter` ≥ 2 adds `_<counter>` for a name that is already taken.
  */
-export function backupFileName(ms: number, kind: BackupKind = 'normal'): string {
+export function backupFileName(ms: number, kind: BackupKind = 'normal', counter = 1): string {
   const d = new Date(ms);
   const date = `${String(d.getFullYear())}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
   const time = `${pad2(d.getHours())}-${pad2(d.getMinutes())}-${pad2(d.getSeconds())}`;
-  return `kalendar-data_${kind === 'invalid' ? 'invalid_' : ''}${date}_${time}.json`;
+  const millis = String(d.getMilliseconds()).padStart(3, '0');
+  const suffix = counter > 1 ? `_${String(counter)}` : '';
+  return `kalendar-data_${kind === 'invalid' ? 'invalid_' : ''}${date}_${time}-${millis}${suffix}.json`;
+}
+
+/** First backup name for the moment that is not in `existing`: an existing backup is never overwritten. */
+export function uniqueBackupName(ms: number, kind: BackupKind, existing: Iterable<string>): string {
+  const taken = new Set(existing);
+  let counter = 1;
+  while (taken.has(backupFileName(ms, kind, counter))) counter++;
+  return backupFileName(ms, kind, counter);
 }
 
 /** Parses a backup file name; null for any other file in the folder. */
 export function parseBackupName(name: string): BackupName | null {
   const m = NAME_RE.exec(name);
   if (m === null) return null;
-  const [, invalid, date, hh, mm, ss] = m;
+  const [, invalid, date = '', hh = '', mm = '', ss = '', millis = '', counter = '1'] = m;
+  const stamp = `${date} ${hh}:${mm}:${ss}`;
   return {
     name,
     kind: invalid === undefined ? 'normal' : 'invalid',
-    stamp: `${date ?? ''} ${hh ?? ''}:${mm ?? ''}:${ss ?? ''}`,
+    stamp,
+    order: `${stamp}.${millis} ${counter.padStart(4, '0')}`,
   };
 }
 
@@ -51,7 +67,7 @@ export function sortedBackups(names: readonly string[]): BackupName[] {
   return names
     .map(parseBackupName)
     .filter((b): b is BackupName => b !== null && b.kind === 'normal')
-    .sort((a, b) => (a.stamp < b.stamp ? 1 : a.stamp > b.stamp ? -1 : 0));
+    .sort((a, b) => (a.order < b.order ? 1 : a.order > b.order ? -1 : 0));
 }
 
 /** Names of normal backups beyond the newest `keep`. */

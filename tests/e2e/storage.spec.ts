@@ -3,6 +3,7 @@
 // system (OPFS), which supports the same handles, permissions and atomic `createWritable`.
 import { expect, test, type Page } from '@playwright/test';
 import { ru } from '../../src/i18n/ru.ts';
+import { AUTOSAVE_DELAY_MS } from '../../src/state/autosave.ts';
 import { collectErrors } from './helpers.ts';
 
 const FOLDER = 'picked';
@@ -68,26 +69,51 @@ function dataFile(files: Record<string, string>): { settings: { lastYear: number
   return JSON.parse(files['kalendar-data.json'] ?? '') as { settings: { lastYear: number } };
 }
 
-test('creates a data folder, autosaves, and continues with one click after a restart', async ({
-  page,
-}) => {
-  const errors = collectErrors(page);
-  await stubPicker(page, { prompt: true });
-  await createFolder(page);
-  expect(Object.keys(await readFolder(page))).toEqual(['kalendar-data.json']);
+function backupYear(files: Record<string, string>, path: string): number {
+  return (JSON.parse(files[path] ?? '') as { settings: { lastYear: number } }).settings.lastYear;
+}
 
-  await page.getByRole('button', { name: ru.toolbar.nextYear }).click();
-  await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saving');
-  await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved');
-  expect(dataFile(await readFolder(page)).settings.lastYear).toBe(2028);
+test.describe('with a paused clock', () => {
+  // Backup names use the browser's local time; UTC keeps the expected names fixed.
+  test.use({ timezoneId: 'UTC' });
 
-  await page.reload();
-  await page.getByRole('button', { name: ru.start.resume }).click();
-  await expect(page.getByRole('spinbutton')).toHaveValue('2028');
-  // One backup on every app start (SPEC 4.3).
-  const files = Object.keys(await readFolder(page));
-  expect(files.filter((f) => f.startsWith('backups/'))).toHaveLength(1);
-  expect(errors).toEqual([]);
+  test('creates a data folder, autosaves, and continues with one click after a restart', async ({
+    page,
+  }) => {
+    const errors = collectErrors(page);
+    // The clock stays paused at 10:00:00.000 except when a test step advances it, so every
+    // backup name is known in advance. Same-millisecond backups are what broke CI before.
+    await page.clock.install({ time: new Date('2027-03-14T09:00:00Z') });
+    await page.clock.pauseAt(new Date('2027-03-14T10:00:00Z'));
+    await stubPicker(page, { prompt: true });
+    await createFolder(page);
+    expect(Object.keys(await readFolder(page))).toEqual(['kalendar-data.json']);
+
+    await page.getByRole('button', { name: ru.toolbar.nextYear }).click();
+    await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saving');
+    await page.clock.runFor(AUTOSAVE_DELAY_MS); // the debounce fires at 10:00:00.800
+    await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved');
+    expect(dataFile(await readFolder(page)).settings.lastYear).toBe(2028);
+
+    await page.reload();
+    await page.getByRole('button', { name: ru.start.resume }).click();
+    await expect(page.getByRole('spinbutton')).toHaveValue('2028');
+    await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved');
+
+    // SPEC 4.3: the first edit copied the seed before overwriting it; the restart copied the
+    // edited file right after loading it. Neither copy replaces the other.
+    const files = await readFolder(page);
+    const backups = Object.keys(files)
+      .filter((f) => f.startsWith('backups/'))
+      .sort();
+    expect(backups).toHaveLength(2);
+    const [preOverwrite = '', startUp = ''] = backups;
+    expect(preOverwrite).toBe('backups/kalendar-data_2027-03-14_10-00-00-800.json');
+    expect(startUp).toBe('backups/kalendar-data_2027-03-14_10-00-00-800_2.json');
+    expect(backupYear(files, preOverwrite)).toBe(2027);
+    expect(backupYear(files, startUp)).toBe(2028);
+    expect(errors).toEqual([]);
+  });
 });
 
 test('opens the remembered folder directly while permission is granted', async ({ page }) => {

@@ -80,7 +80,7 @@ describe('connect', () => {
 describe('load', () => {
   it('returns the data and makes one backup per start', async () => {
     expect(await openExisting()).toEqual({ data: base, readOnly: null, migratedFrom: null });
-    expect(backups()).toEqual(['backups/kalendar-data_2027-03-14_10-00-00.json']);
+    expect(backups()).toEqual(['backups/kalendar-data_2027-03-14_10-00-00-000.json']);
   });
 
   it('throws notFound without a data file', async () => {
@@ -140,6 +140,31 @@ describe('save', () => {
     expect(onDisk().settings.lastYear).toBe(2029);
   });
 
+  it('never overwrites an existing backup made in the same millisecond', async () => {
+    // The e2e restart scenario on a fast machine, at one clock reading: create, first edit
+    // (pre-overwrite copy of the seed), restart (start-up copy with the edit), restart again.
+    await storage.connect('create');
+    await storage.save(withYear(2027));
+    await storage.save(withYear(2028));
+    await storage.connect('resume');
+    await storage.load();
+    await storage.connect('resume');
+    await storage.load();
+
+    expect(backups()).toEqual([
+      'backups/kalendar-data_2027-03-14_10-00-00-000.json',
+      'backups/kalendar-data_2027-03-14_10-00-00-000_2.json',
+      'backups/kalendar-data_2027-03-14_10-00-00-000_3.json',
+    ]);
+    const years = (await storage.listBackups()).map(
+      (b) =>
+        (JSON.parse(storage.folder.files.get(`backups/${b.name}`)?.text ?? '') as DataFile).settings
+          .lastYear,
+    );
+    // Newest first: the two start-up copies, then the seed copied before the first edit.
+    expect(years).toEqual([2028, 2028, 2027]);
+  });
+
   it('keeps only the newest 30 backups', async () => {
     storage.folder.externalWrite(DATA_FILE_NAME, serializeDataFile(base));
     for (let i = 0; i < 35; i++) {
@@ -148,7 +173,7 @@ describe('save', () => {
       await storage.load();
     }
     expect(backups()).toHaveLength(30);
-    expect(backups()[0]).toBe('backups/kalendar-data_2027-03-14_10-00-06.json');
+    expect(backups()[0]).toBe('backups/kalendar-data_2027-03-14_10-00-06-000.json');
   });
 
   it('stops on an external change until forced', async () => {
@@ -212,18 +237,18 @@ describe('backups', () => {
   it('finds the newest valid backup and restores it over an invalid file', async () => {
     await openExisting(withYear(2027));
     now += 1000;
-    storage.folder.externalWrite('backups/kalendar-data_2027-03-14_10-00-01.json', '{ broken');
+    storage.folder.externalWrite('backups/kalendar-data_2027-03-14_10-00-01-000.json', '{ broken');
     storage.folder.externalWrite(DATA_FILE_NAME, 'not json');
     now += 1000;
     await storage.connect('open');
     await expect(storage.load()).rejects.toMatchObject({ kind: 'invalid' });
 
     const newest = await storage.newestValidBackup();
-    expect(newest?.name).toBe('kalendar-data_2027-03-14_10-00-00.json');
+    expect(newest?.name).toBe('kalendar-data_2027-03-14_10-00-00-000.json');
     const data = await storage.restoreBackup(newest?.name ?? '');
-    expect(backups()).toContain('backups/kalendar-data_invalid_2027-03-14_10-00-02.json');
+    expect(backups()).toContain('backups/kalendar-data_invalid_2027-03-14_10-00-02-000.json');
     expect((await storage.listBackups()).map((b) => b.name)).not.toContain(
-      'kalendar-data_invalid_2027-03-14_10-00-02.json',
+      'kalendar-data_invalid_2027-03-14_10-00-02-000.json',
     );
     await storage.save(data);
     expect(onDisk().settings.lastYear).toBe(2027);
@@ -231,23 +256,23 @@ describe('backups', () => {
 
   it('returns null when no backup is valid', async () => {
     await storage.connect('create');
-    storage.folder.externalWrite('backups/kalendar-data_2027-03-14_10-00-01.json', '{ broken');
+    storage.folder.externalWrite('backups/kalendar-data_2027-03-14_10-00-01-000.json', '{ broken');
     expect(await storage.newestValidBackup()).toBeNull();
   });
 
   it('refuses to restore a missing, invalid or newer backup', async () => {
     await storage.connect('create');
-    storage.folder.externalWrite('backups/kalendar-data_2027-03-14_10-00-01.json', '{ broken');
+    storage.folder.externalWrite('backups/kalendar-data_2027-03-14_10-00-01-000.json', '{ broken');
     storage.folder.externalWrite(
-      'backups/kalendar-data_2027-03-14_10-00-02.json',
+      'backups/kalendar-data_2027-03-14_10-00-02-000.json',
       JSON.stringify({ ...base, schemaVersion: 5 }),
     );
     await expect(storage.restoreBackup('nope.json')).rejects.toMatchObject({ kind: 'notFound' });
     await expect(
-      storage.restoreBackup('kalendar-data_2027-03-14_10-00-01.json'),
+      storage.restoreBackup('kalendar-data_2027-03-14_10-00-01-000.json'),
     ).rejects.toMatchObject({ kind: 'invalid' });
     await expect(
-      storage.restoreBackup('kalendar-data_2027-03-14_10-00-02.json'),
+      storage.restoreBackup('kalendar-data_2027-03-14_10-00-02-000.json'),
     ).rejects.toMatchObject({ kind: 'newer' });
   });
 });

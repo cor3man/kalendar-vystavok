@@ -4,10 +4,10 @@ import type { DataFile } from '../domain/types.ts';
 import {
   BACKUP_DIR,
   DATA_FILE_NAME,
-  backupFileName,
   backupsToPrune,
   isBackupDue,
   sortedBackups,
+  uniqueBackupName,
   type BackupKind,
 } from './backupPolicy.ts';
 import { DataFileError, ExternalChangeError } from './errors.ts';
@@ -78,10 +78,11 @@ export function createFolderStorage(
 
   async function writeBackup(f: DataFolder, text: string, kind: BackupKind): Promise<void> {
     const now = clock.now();
-    await f.write(backupPath(backupFileName(now, kind)), text);
+    const existing = (await f.list(BACKUP_DIR)).map((e) => e.name);
+    const name = uniqueBackupName(now, kind, existing);
+    await f.write(backupPath(name), text);
     if (kind === 'normal') lastBackupAt = now;
-    const names = (await f.list(BACKUP_DIR)).map((e) => e.name);
-    for (const old of backupsToPrune(names)) await f.remove(backupPath(old));
+    for (const old of backupsToPrune([...existing, name])) await f.remove(backupPath(old));
   }
 
   /** Copies the current data file to backups; no-op when it does not exist. */

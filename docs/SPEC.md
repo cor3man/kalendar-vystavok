@@ -205,9 +205,10 @@ Rules: an exhibition or country in use by an event cannot be deleted (the app ex
 <data folder>/
   kalendar-data.json              current data
   backups/
-    kalendar-data_2027-03-14_10-22-05.json
+    kalendar-data_2027-03-14_10-22-05-042.json
+    kalendar-data_2027-03-14_10-22-05-042_2.json     same millisecond: counter suffix
     ...                           newest 30 kept, older deleted
-    kalendar-data_invalid_2027-03-14_10-30-00.json   copy of an invalid file, never deleted
+    kalendar-data_invalid_2027-03-14_10-30-00-000.json   copy of an invalid file, never deleted
 ```
 
 - First run: the user chooses "Создать новую папку данных" (creates the file with seed data, Appendix A) or "Открыть существующую" (picks a folder containing `kalendar-data.json`).
@@ -218,7 +219,7 @@ Rules: an exhibition or country in use by an event cannot be deleted (the app ex
 
 - Autosave after every change, debounced 800 ms; a status indicator shows "Сохранено" / "Сохранение…" / "Ошибка сохранения".
 - Atomic write: `createWritable()` writes to a temporary file that replaces the original only on `close()`; a crash never leaves a half-written file.
-- Before overwriting, the previous file is copied to `backups/` (at most one backup per 10 minutes of editing, plus one on every app start, made right after the file is loaded). Backup names use the local wall-clock time.
+- Before overwriting, the previous file is copied to `backups/` (at most one backup per 10 minutes of editing, plus one on every app start, made right after the file is loaded). Backup names use the local wall-clock time with milliseconds; an existing backup is never overwritten: if the name is taken, a counter is added (`_2`, `_3`, …).
 - Every save stamps `savedAt` and `appVersion`. Changing the year or format updates `settings` and is saved too (it is not an undo step).
 - The status is "Сохранение…" while changes are waiting to be written. The app saves when the tab is hidden and warns before the tab closes with unsaved changes.
 - External change check: before each write, compare the file's `lastModified` with the value at last read. If it changed (e.g. a sync tool or another computer), stop autosave and ask: reload from disk, or overwrite.
