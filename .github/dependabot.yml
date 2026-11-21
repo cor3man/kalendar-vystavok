@@ -3,8 +3,23 @@ updates:
   - package-ecosystem: npm
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
+    groups:
+      # Minor and patch updates in one PR; majors stay separate PRs.
+      npm-minor-patch:
+        update-types:
+          - minor
+          - patch
+    ignore:
+      # typescript-eslint does not support TypeScript 7 yet (SPEC Appendix E).
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
+    groups:
+      github-actions:
+        patterns:
+          - '*'
