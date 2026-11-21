@@ -61,7 +61,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['*.config.{ts,js}', 'tests/**/*.ts'],
+    files: ['*.config.{ts,js}', 'tests/**/*.ts', 'scripts/**/*.ts'],
     languageOptions: { globals: globals.node },
   },
   prettier,

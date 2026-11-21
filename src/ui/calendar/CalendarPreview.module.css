@@ -1,0 +1,18 @@
+.scroller {
+  overflow-x: auto;
+  padding: var(--space-6);
+  background: var(--color-surface);
+}
+
+/* SPEC 5.2: scaled to the window width, at least 900 px wide with horizontal scroll. */
+.page {
+  min-width: 900px;
+  margin: 0 auto;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 20%);
+  background: #ffffff;
+  line-height: 0;
+}
+
+.loading {
+  color: var(--color-text-muted);
+}

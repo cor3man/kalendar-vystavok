@@ -5,3 +5,4 @@ test-results/
 package-lock.json
 docs/SPEC.md
 CLAUDE.md
+src/storage/seedFlags.json
