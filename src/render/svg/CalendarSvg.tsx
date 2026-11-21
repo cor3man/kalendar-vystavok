@@ -110,6 +110,8 @@ export function CalendarSvg({ layout, title }: CalendarSvgProps) {
       aria-label={title}
       fontFamily={`'${FONT_FAMILY}', sans-serif`}
       data-format={page.formatId}
+      // Matches the measurer and the PDF, which do not kern (SPEC 3.7).
+      style={{ fontKerning: 'none' }}
     >
       <defs>
         {shapes.map((s, i) =>
