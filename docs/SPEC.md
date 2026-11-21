@@ -621,3 +621,4 @@ Event text is always `#151515`; a custom colour darker than 45 % luminance shows
 - Hiding held events from the printout as an option.
 - Copying a whole year of events at once.
 - CMYK / print-shop PDF.
+- Upgrade to TypeScript 7 when typescript-eslint supports it.
