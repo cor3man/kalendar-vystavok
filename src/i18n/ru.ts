@@ -19,6 +19,21 @@ export const ru = {
     'Ноябрь',
     'Декабрь',
   ],
+  /** Month names, genitive, for dates in words: "16–18 марта 2027" (SPEC 5). */
+  monthsGenitive: [
+    'января',
+    'февраля',
+    'марта',
+    'апреля',
+    'мая',
+    'июня',
+    'июля',
+    'августа',
+    'сентября',
+    'октября',
+    'ноября',
+    'декабря',
+  ],
   /** Weekday abbreviations, Monday first (SPEC 3.3). */
   weekdaysShort: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
   /** Followed by DD.MM.YYYY at the top right of the page (SPEC 3.2). */

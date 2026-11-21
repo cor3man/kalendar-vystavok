@@ -1,14 +1,40 @@
 // Zustand store (SPEC 6.1): the session (data folder, phases), the data, autosave state and the
 // selected year and format. The UI reaches data only here; this store reaches disk only through
-// the Storage interface (CLAUDE.md). Editing actions and the undo history arrive in M4.
+// the Storage interface (CLAUDE.md). Data edits go through pure functions of domain/editing.ts
+// and are recorded in the undo history (SPEC 5.6).
 import { createStore, type StoreApi } from 'zustand/vanilla';
-import type { DataFile, FormatId } from '../domain/types.ts';
+import {
+  deleteCountry,
+  deleteEvent,
+  deleteExhibition,
+  deleteHoliday,
+  fillBelarusHolidays,
+  saveCountry,
+  saveEvent,
+  saveExhibition,
+  saveHoliday,
+  type CountryDraft,
+  type EditError,
+  type EditResult,
+  type EventDraft,
+  type ExhibitionDraft,
+} from '../domain/editing.ts';
+import type { DataFile, FormatId, Holiday, Id, ISODate } from '../domain/types.ts';
 import { DataFileError, isAbortError } from '../storage/errors.ts';
 import type { Clock } from '../storage/folderStorage.ts';
 import { parseDataFile, serializeDataFile, type ParseResult } from '../storage/schema.ts';
 import type { BackupInfo, Storage } from '../storage/Storage.ts';
 import { createAutosave, stampForSave, type AutosaveState } from './autosave.ts';
 import { todayISO } from './clock.ts';
+import {
+  EMPTY_HISTORY,
+  record,
+  redoStep,
+  snapshotOf,
+  undoStep,
+  type History,
+  type Step,
+} from './history.ts';
 import type { TabLock } from './tabLock.ts';
 
 /** Years the toolbar accepts. Orthodox Easter (holidays) is defined for 1900–2099. */
@@ -34,6 +60,20 @@ export type Phase =
 
 export type ReadOnlyReason = 'otherTab' | 'newerVersion';
 
+/** Result of an editing action: the id of the saved item, or why it was refused. */
+export type EditOutcome = { ok: true; id: Id } | { ok: false; error: EditError };
+
+export interface SaveEventInput {
+  /** null: a new event. */
+  id: Id | null;
+  draft: EventDraft;
+  /**
+   * "Создать выставку «…»" (SPEC 5.4): the exhibition is created from the event's values in the
+   * same undo step; `draft.exhibitionId` is ignored.
+   */
+  newExhibitionName?: string;
+}
+
 export interface CalendarState {
   phase: Phase;
   /** Non-null in the `ready` phase. */
@@ -47,6 +87,9 @@ export interface CalendarState {
   savedRevision: number;
   saving: boolean;
   saveError: 'failed' | 'conflict' | null;
+  history: History;
+  /** Incremented on every data edit, undo and redo (not on year / format changes). */
+  editCount: number;
 
   init: () => Promise<void>;
   createFolder: () => Promise<void>;
@@ -76,6 +119,20 @@ export interface CalendarState {
   changeFolder: (options?: { discard?: boolean }) => Promise<boolean>;
   /** JSON backup download of the current data (SPEC 4.3, 4.7). */
   exportSnapshot(): { fileName: string; text: string } | null;
+
+  saveEvent: (input: SaveEventInput) => EditOutcome;
+  deleteEvent: (id: Id) => EditOutcome;
+  saveExhibition: (id: Id | null, draft: ExhibitionDraft) => EditOutcome;
+  deleteExhibition: (id: Id) => EditOutcome;
+  saveCountry: (id: Id | null, draft: CountryDraft) => EditOutcome;
+  deleteCountry: (id: Id) => EditOutcome;
+  /** `previousDate` null adds a holiday; otherwise the holiday at that date is changed. */
+  saveHoliday: (previousDate: ISODate | null, holiday: Holiday) => EditError | null;
+  deleteHoliday: (date: ISODate) => EditError | null;
+  /** Adds the default Belarus holidays of a year; returns how many were added (SPEC 5.8). */
+  fillHolidays: (year: number) => number;
+  undo: () => void;
+  redo: () => void;
 }
 
 export type CalendarStore = StoreApi<CalendarState>;
@@ -95,7 +152,22 @@ export interface StoreDeps {
   supported: boolean;
   /** Seed data, loaded lazily so it stays out of the main bundle (SPEC §8 M3). */
   loadSeed: (request: SeedRequest) => Promise<DataFile>;
+  /** Random id generator for new items (SPEC 4.1). */
+  newId: () => Id;
   autosaveDelayMs?: number;
+}
+
+/** True when the state allows data edits. */
+export function isWritable(s: CalendarState): boolean {
+  return s.phase.kind === 'ready' && s.readOnly === null && s.data !== null;
+}
+
+export function canUndo(s: CalendarState): boolean {
+  return isWritable(s) && s.history.past.length > 0;
+}
+
+export function canRedo(s: CalendarState): boolean {
+  return isWritable(s) && s.history.future.length > 0;
 }
 
 export function hasUnsavedChanges(s: CalendarState): boolean {
@@ -126,6 +198,7 @@ export function createCalendarStore(deps: StoreDeps): CalendarStore {
         savedRevision: 0,
         saving: false,
         saveError: null,
+        history: EMPTY_HISTORY,
       });
     }
 
@@ -161,20 +234,68 @@ export function createCalendarStore(deps: StoreDeps): CalendarStore {
       set({ data: { ...data, settings: { ...data.settings, ...patch } }, revision: revision + 1 });
     }
 
+    /** Import and restore replace the data in one undoable step (SPEC 5.6). */
     function replaceData(data: DataFile) {
+      const s = get();
       set({
         data,
         year: clampYear(data.settings.lastYear),
         format: data.settings.lastFormat,
-        revision: get().revision + 1,
+        revision: s.revision + 1,
+        history: s.data === null ? s.history : record(s.history, snapshotOf(s.data)),
+        editCount: s.editCount + 1,
       });
     }
 
-    function requireWritable() {
+    function requireWritable(): DataFile {
       const s = get();
-      if (s.phase.kind !== 'ready' || s.readOnly !== null) {
+      if (!isWritable(s) || s.data === null) {
         throw new Error('Data cannot be changed in this state');
       }
+      return s.data;
+    }
+
+    /** Applies an edit as one undo step; an edit that changes nothing is not recorded. */
+    function commit(before: DataFile, after: DataFile) {
+      if (after === before) return;
+      const s = get();
+      set({
+        data: { ...after, settings: s.data?.settings ?? after.settings },
+        revision: s.revision + 1,
+        history: record(s.history, snapshotOf(before)),
+        editCount: s.editCount + 1,
+      });
+    }
+
+    function applyStep(step: Step | null) {
+      const s = get();
+      if (step === null || s.data === null) return;
+      set({
+        data: { ...s.data, ...step.snapshot },
+        history: step.history,
+        revision: s.revision + 1,
+        editCount: s.editCount + 1,
+      });
+    }
+
+    /** A random id not used by any country, exhibition or event. */
+    function uniqueId(data: DataFile): Id {
+      const used = new Set<Id>([
+        ...data.countries.map((c) => c.id),
+        ...data.exhibitions.map((x) => x.id),
+        ...data.events.map((e) => e.id),
+      ]);
+      let id = deps.newId();
+      while (used.has(id)) id = deps.newId();
+      return id;
+    }
+
+    function run(edit: (data: DataFile) => EditResult, id: Id): EditOutcome {
+      const before = requireWritable();
+      const result = edit(before);
+      if (!result.ok) return result;
+      commit(before, result.data);
+      return { ok: true, id };
     }
 
     return {
@@ -189,6 +310,8 @@ export function createCalendarStore(deps: StoreDeps): CalendarStore {
       savedRevision: 0,
       saving: false,
       saveError: null,
+      history: EMPTY_HISTORY,
+      editCount: 0,
 
       async init() {
         if (!deps.supported) {
@@ -313,6 +436,7 @@ export function createCalendarStore(deps: StoreDeps): CalendarStore {
           savedRevision: 0,
           saveError: null,
           readOnly: get().readOnly === 'otherTab' ? 'otherTab' : null,
+          history: EMPTY_HISTORY,
         });
         return true;
       },
@@ -325,6 +449,76 @@ export function createCalendarStore(deps: StoreDeps): CalendarStore {
           fileName: `kalendar-data_${todayISO(new Date(now))}.json`,
           text: serializeDataFile(stampForSave(data, now, appVersion)),
         };
+      },
+
+      saveEvent({ id, draft, newExhibitionName }) {
+        const before = requireWritable();
+        let data = before;
+        let eventDraft = draft;
+        if (newExhibitionName !== undefined) {
+          const exhibitionId = uniqueId(data);
+          const created = saveExhibition(data, exhibitionId, {
+            name: newExhibitionName,
+            shortName: newExhibitionName,
+            logo: null,
+            defaultCity: draft.city,
+            defaultCountryId: draft.countryId,
+            defaultColor: draft.color,
+          });
+          if (!created.ok) return created;
+          data = created.data;
+          eventDraft = { ...draft, exhibitionId };
+        }
+        const eventId = id ?? uniqueId(data);
+        const result = saveEvent(data, eventId, eventDraft);
+        if (!result.ok) return result;
+        commit(before, result.data);
+        return { ok: true, id: eventId };
+      },
+
+      deleteEvent: (id) => run((d) => deleteEvent(d, id), id),
+
+      saveExhibition(id, draft) {
+        const itemId = id ?? uniqueId(requireWritable());
+        return run((d) => saveExhibition(d, itemId, draft), itemId);
+      },
+
+      deleteExhibition: (id) => run((d) => deleteExhibition(d, id), id),
+
+      saveCountry(id, draft) {
+        const itemId = id ?? uniqueId(requireWritable());
+        return run((d) => saveCountry(d, itemId, draft), itemId);
+      },
+
+      deleteCountry: (id) => run((d) => deleteCountry(d, id), id),
+
+      saveHoliday(previousDate, holiday) {
+        const outcome = run((d) => saveHoliday(d, previousDate, holiday), holiday.date);
+        return outcome.ok ? null : outcome.error;
+      },
+
+      deleteHoliday(date) {
+        const outcome = run((d) => deleteHoliday(d, date), date);
+        return outcome.ok ? null : outcome.error;
+      },
+
+      fillHolidays(year) {
+        const before = requireWritable();
+        const after = fillBelarusHolidays(before, year);
+        commit(before, after);
+        return after.holidays.length - before.holidays.length;
+      },
+
+      undo() {
+        const s = get();
+        if (!canUndo(s) || s.data === null) return;
+        applyStep(undoStep(s.history, snapshotOf(s.data)));
+      },
+
+      redo() {
+        const s = get();
+        if (!canRedo(s) || s.data === null) return;
+        applyStep(redoStep(s.history, snapshotOf(s.data)));
       },
     };
   });
