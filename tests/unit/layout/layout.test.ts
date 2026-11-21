@@ -82,8 +82,27 @@ function shapeBounds(s: Shape): { left: number; right: number; top: number; bott
       };
     case 'text':
       return textBounds(s);
+    case 'path': {
+      const xs = s.points.map((p) => p.x);
+      const ys = s.points.map((p) => p.y);
+      const half = s.width / 2;
+      return {
+        left: Math.min(...xs) - half,
+        right: Math.max(...xs) + half,
+        top: Math.min(...ys) - half,
+        bottom: Math.max(...ys) + half,
+      };
+    }
   }
 }
+
+/** The seed with every event marked as held, so the check mark is laid out too. */
+const heldSeed: DataFile = { ...seed, events: seed.events.map((e) => ({ ...e, held: true })) };
+const datasets = [
+  ['seed', seed],
+  ['held seed', heldSeed],
+] as const;
+const cases = FORMAT_IDS.flatMap((f) => datasets.map(([name, data]) => [f, name, data] as const));
 
 describe('pageSpec', () => {
   it('defines the four formats of 3.1', () => {
@@ -128,8 +147,8 @@ describe('pageSpec', () => {
 });
 
 describe('layoutCalendar invariants', () => {
-  it.each(FORMAT_IDS)('%s: all shapes inside the page', (format: FormatId) => {
-    const r = run({ format });
+  it.each(cases)('%s, %s: all shapes inside the page', (format: FormatId, _name, data) => {
+    const r = run({ format, data });
     for (const s of r.shapes) {
       const b = shapeBounds(s);
       expect(b.left).toBeGreaterThanOrEqual(-1e-6);
@@ -139,17 +158,20 @@ describe('layoutCalendar invariants', () => {
     }
   });
 
-  it.each(FORMAT_IDS)('%s: no event text inside a number zone', (format: FormatId) => {
-    const r = run({ format });
+  it.each(cases)('%s, %s: no event text inside a number zone', (format: FormatId, _name, data) => {
+    const r = run({ format, data });
     const { grid } = r;
-    // Event texts are those that disappear when the same page is laid out without events.
+    // Event content is what disappears when the same page is laid out without events.
     const empty = new Set(
-      texts(run({ format, data: withEvents([]) })).map((t) => JSON.stringify(t)),
+      run({ format, data: withEvents([], data) }).shapes.map((t) => JSON.stringify(t)),
     );
-    const eventTexts = texts(r).filter((t) => !empty.has(JSON.stringify(t)));
-    expect(eventTexts.length).toBeGreaterThan(0);
-    for (const t of eventTexts) {
-      const b = textBounds(t);
+    const eventContent = r.shapes.filter(
+      (s) => (s.kind === 'text' || s.kind === 'path') && !empty.has(JSON.stringify(s)),
+    );
+    expect(eventContent.length).toBeGreaterThan(0);
+    if (data === heldSeed) expect(eventContent.some((s) => s.kind === 'path')).toBe(true);
+    for (const t of eventContent) {
+      const b = shapeBounds(t);
       const column = Math.floor((b.left - grid.x) / grid.colW);
       expect(b.left - (grid.x + column * grid.colW)).toBeGreaterThanOrEqual(
         SIZES.numberZone - 1e-6,

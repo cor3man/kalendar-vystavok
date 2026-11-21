@@ -59,6 +59,19 @@ function drawShape(shape: Shape, key: number, clipId: string): ReactElement {
           )}
         </g>
       );
+    case 'path':
+      return (
+        <polyline
+          key={key}
+          points={shape.points.map((p) => `${String(p.x)},${String(p.y)}`).join(' ')}
+          fill="none"
+          stroke={shape.stroke}
+          strokeWidth={shape.width}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          clipPath={shape.clip === undefined ? undefined : `url(#${clipId})`}
+        />
+      );
     case 'text':
       return (
         <text
@@ -100,7 +113,7 @@ export function CalendarSvg({ layout, title }: CalendarSvgProps) {
     >
       <defs>
         {shapes.map((s, i) =>
-          s.kind === 'text' && s.clip !== undefined ? (
+          (s.kind === 'text' || s.kind === 'path') && s.clip !== undefined ? (
             // A rotated text's clip is given in page coordinates, so the clip path ignores the text's transform.
             <clipPath key={i} id={clipId(i)} clipPathUnits="userSpaceOnUse">
               <rect
@@ -108,7 +121,11 @@ export function CalendarSvg({ layout, title }: CalendarSvgProps) {
                 y={s.clip.y}
                 width={s.clip.w}
                 height={s.clip.h}
-                transform={s.rotate === 90 ? `rotate(90 ${String(s.x)} ${String(s.y)})` : undefined}
+                transform={
+                  s.kind === 'text' && s.rotate === 90
+                    ? `rotate(90 ${String(s.x)} ${String(s.y)})`
+                    : undefined
+                }
               />
             </clipPath>
           ) : null,

@@ -49,7 +49,19 @@ export interface ImageShape extends Rect {
   border: boolean;
 }
 
-export type Shape = RectShape | LineShape | TextShape | ImageShape;
+/**
+ * Open polyline in page coordinates, stroked with round caps and joins; used for the held
+ * check mark (SPEC 3.6). `clip` as on text shapes.
+ */
+export interface PathShape {
+  kind: 'path';
+  points: { x: number; y: number }[];
+  stroke: string;
+  width: number;
+  clip?: Rect;
+}
+
+export type Shape = RectShape | LineShape | TextShape | ImageShape | PathShape;
 
 /** Geometry of the day grid, for hit-testing day cells. */
 export interface GridGeometry {

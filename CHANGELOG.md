@@ -3,6 +3,15 @@
 All notable changes to this project are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Held mark: drawn as a vector check-mark path (new `path` shape) sized to the name's cap height
+  and counted in wrapping; PT Sans Narrow has no ✓ glyph.
+- SPEC: approved M1 review decisions (clip on text shapes and the `path` shape in 6.3, sizes
+  in 3.2–3.3 and 3.6, held-mark rule, per-day lane width backlog item, seed dynamic import in M3).
+
 ## [0.2.0] — 2026-11-20 — M1 Domain and layout engine
 
 ### Added

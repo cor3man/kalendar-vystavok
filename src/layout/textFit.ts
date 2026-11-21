@@ -2,7 +2,7 @@
 import type { ImageData } from '../domain/types.ts';
 import { FONT_METRICS, type TextMeasurer } from './measure.ts';
 import { COLORS } from './pageSpec.ts';
-import type { Rect, Shape, TextShape } from './shapes.ts';
+import type { PathShape, Rect, Shape, TextShape } from './shapes.ts';
 
 export const FIT = {
   nameTop: 0.6,
@@ -24,8 +24,16 @@ export const FIT = {
   bottomPad: 0.4,
 } as const;
 
-/** "✓" + non-breaking space before the name of a held event; the NBSP keeps ✓ on the first word's line. */
-export const HELD_PREFIX = '✓ ';
+/**
+ * Held mark (SPEC 3.6): a check mark drawn as a vector path before the name, as tall as the
+ * name's cap height. The font has no check-mark glyph, so the mark is geometry, not text.
+ */
+export const HELD_MARK = {
+  /** Mark width as a share of the cap height. */
+  widthRatio: 0.9,
+  /** Stroke width per em of the name size. */
+  strokeRatio: 0.12,
+} as const;
 
 export type FitStep = 'horizontal' | 'horizontalNoLogo' | 'vertical' | 'verticalNoCity' | 'clipped';
 
@@ -59,15 +67,39 @@ export function sizeSteps(max: number, min: number): number[] {
   return out;
 }
 
-/** The printed name: held prefix + short name. */
-export function displayName(name: string, held: boolean): string {
-  const trimmed = name.trim();
-  return held ? HELD_PREFIX + trimmed : trimmed;
+function markBoxWidth(size: number): number {
+  return HELD_MARK.widthRatio * FONT_METRICS.capHeight * size;
+}
+
+/** Space the held mark takes before the first line: the mark plus one space of the name font. */
+export function heldMarkWidth(size: number, m: TextMeasurer): number {
+  return markBoxWidth(size) + m.width(' ', size, true);
+}
+
+/** Maps a point of the mark's local frame (u along the reading direction, v up from the baseline) to the page. */
+type ToPage = (u: number, v: number) => { x: number; y: number };
+
+/** The check mark as a polyline whose stroke stays inside the mark box (width × cap height). */
+function heldMark(size: number, toPage: ToPage, clip: Rect | null): PathShape {
+  const sw = HELD_MARK.strokeRatio * size;
+  const i = sw / 2;
+  const iw = markBoxWidth(size) - sw;
+  const ih = FONT_METRICS.capHeight * size - sw;
+  const points = [toPage(i, i + 0.5 * ih), toPage(i + 0.38 * iw, i), toPage(i + iw, i + ih)];
+  return {
+    kind: 'path',
+    points,
+    stroke: COLORS.eventText,
+    width: sw,
+    ...(clip === null ? {} : { clip }),
+  };
 }
 
 /**
  * Greedy word wrap. Breaks only at regular spaces and at '\n'.
- * Returns null when a word is wider than maxWidth or more than maxLines lines are needed,
+ * `firstIndent` is reserved before the first line (the held mark), so the mark always shares
+ * its line with the first word.
+ * Returns null when a word is wider than its line or more than maxLines lines are needed,
  * unless `loose` is set (then lines may overflow and are cut at maxLines).
  */
 export function wrapText(
@@ -77,9 +109,11 @@ export function wrapText(
   maxWidth: number,
   measurer: TextMeasurer,
   loose = false,
+  firstIndent = 0,
 ): string[] | null {
   const lines: string[] = [];
-  const fits = (s: string): boolean => measurer.width(s, size, bold) <= maxWidth + 1e-9;
+  const fits = (s: string): boolean =>
+    measurer.width(s, size, bold) + (lines.length === 0 ? firstIndent : 0) <= maxWidth + 1e-9;
   for (const paragraph of text.split('\n')) {
     const words = paragraph.split(' ').filter((w) => w !== '');
     let line = '';
@@ -175,7 +209,8 @@ function tryHorizontal(
   const right = area.x + area.w;
   const bottom = area.y + area.h;
   const lineH = FIT.lineHeight * size;
-  const name = displayName(input.name, input.held);
+  const name = input.name.trim();
+  const indent = input.held ? heldMarkWidth(size, m) : 0;
   const flag = primary?.flag ?? null;
   const fs = flag === null ? null : flagSize(flag, rowH);
   const shapes: Shape[] = [];
@@ -232,7 +267,7 @@ function tryHorizontal(
     nameLimit = bottom - FIT.bottomPad;
   }
 
-  const lines = wrapText(name, size, true, nameRight - area.x, m);
+  const lines = wrapText(name, size, true, nameRight - area.x, m, false, indent);
   if (lines === null) return null;
   const nameTop = area.y + FIT.nameTop;
   const nameBottom = nameTop + lines.length * lineH;
@@ -240,6 +275,12 @@ function tryHorizontal(
   lines.forEach((line, i) =>
     shapes.push(textShape(nameRight, capBaseline(nameTop + i * lineH, size), line, size, 'right')),
   );
+
+  if (input.held) {
+    const markStart = nameRight - m.width(lines[0] ?? '', size, true) - indent;
+    const baseline = capBaseline(nameTop, size);
+    shapes.push(heldMark(size, (u, v) => ({ x: markStart + u, y: baseline - v }), null));
+  }
 
   const logo = primary?.logo ?? null;
   if (withLogo && logo !== null) {
@@ -266,8 +307,10 @@ function verticalShapes(
   const fs = flag === null ? null : flagSize(flag, rowH);
   const length = area.h - FIT.nameTop - FIT.bottomPad - (fs === null ? 0 : fs.h + FIT.bottomPad);
 
-  const lines = wrapText(displayName(input.name, input.held), size, true, length, m, loose);
+  const indent = input.held ? heldMarkWidth(size, m) : 0;
+  const lines = wrapText(input.name.trim(), size, true, length, m, loose, indent);
   if (lines === null) return null;
+  const firstLine = lines[0] ?? '';
   const city = withCity ? (primary?.city ?? '') : '';
   if (city !== '') {
     if (m.width(city, size, true) > length + 1e-9) return null;
@@ -276,17 +319,20 @@ function verticalShapes(
   if (!loose && lines.length * lineH > area.w + 1e-9) return null;
 
   const clip = loose ? { clip: { ...area } } : {};
+  const baselineX = (i: number): number =>
+    area.x + i * lineH + (lineH + FONT_METRICS.capHeight * size) / 2;
+  const top = area.y + FIT.nameTop;
   const shapes: Shape[] = lines.map((line, i) => ({
-    ...textShape(
-      area.x + i * lineH + (lineH + FONT_METRICS.capHeight * size) / 2,
-      area.y + FIT.nameTop,
-      line,
-      size,
-      'right',
-      90,
-    ),
+    ...textShape(baselineX(i), top, line, size, 'right', 90),
     ...clip,
   }));
+  if (input.held) {
+    // Rotated 90° CCW: reading runs up the page (−y) and "up" points left (−x).
+    const textStart = top + m.width(firstLine, size, true);
+    const bx = baselineX(0);
+    const markClip = loose ? { ...area } : null;
+    shapes.push(heldMark(size, (u, v) => ({ x: bx - v, y: textStart + indent - u }), markClip));
+  }
   if (flag !== null && fs !== null) {
     shapes.push({
       kind: 'image',
