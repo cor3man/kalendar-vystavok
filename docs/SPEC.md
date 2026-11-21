@@ -87,7 +87,9 @@ One layout engine computes the page as a list of shapes in millimetres; the on-s
 ### 3.2 Page structure
 
 - Margin M = 8 on all sides.
-- Title: top left, bold, magenta `#E6007E`; 14 on A3, 11 on A4. "Обновлено: DD.MM.YYYY" at top right, 3, grey `#777`, date = day of export.
+- Title: top left, bold, magenta `#E6007E`; 14 on A3, 11 on A4. Its cap tops sit on the top margin (baseline = M + 0.7 × title size). "Обновлено: DD.MM.YYYY" at top right, 3, grey `#777`, on the title's baseline, date = day of export.
+- Title block: the month header band starts 1.25 × title size below the top margin (A3: y = 25.5; A4: y = 21.75), matching the reference.
+- `split` only: the small "Y+1" label is bold, magenta, 4, centred over the January column, baseline 1.2 above the month header band.
 - Month header band: height 8, fill `#2B2B2B`, month names in white bold capitals, centred; 4.6 on A3, 3.6 on A4.
 - Grid: one column per month (equal widths), 31 rows (equal heights) filling the rest of the page. Days that do not exist (e.g. 30 Feb) are empty cells.
 - Grid lines: 0.2 wide, colour `#2A1F8F`, drawn **above** all fills so every day border stays visible inside events.
@@ -95,7 +97,7 @@ One layout engine computes the page as a list of shapes in millimetres; the on-s
 
 ### 3.3 Day cell
 
-- Day number at left (regular, 2.7) followed by the weekday abbreviation (Пн Вт Ср Чт Пт Сб Вс, regular, 1.5), vertically centred, 1.3 from the left edge.
+- Day number at left (regular, 2.7) followed by the weekday abbreviation (Пн Вт Ср Чт Пт Сб Вс, regular, 1.5) with a 0.4 gap, both on one baseline, vertically centred, 1.3 from the left edge.
 - Saturdays, Sundays and holidays: number and weekday in magenta `#E6007E`; other days `#151515`.
 - The **number zone** is the left 7.4 of each cell; event text never enters it.
 
@@ -121,10 +123,11 @@ Text area of a segment: from the lane's left edge (lane 0: from the end of the n
 **Horizontal layout (preferred)**
 
 - Name: bold, right-aligned, top-aligned 0.6 below the segment top, word-wrapped, max 4 lines, line height 1.15 × size. Size: largest of 3.4 → 2.1 in 0.1 steps that fits. Manual line breaks from the short name (4.1) are respected.
-- "✓ " (with a non-breaking space) precedes the name of a held event.
+- A held event shows a check mark before its name. The font has no ✓ glyph, so the mark is a vector path (open polyline, round caps and joins, stroke 0.12 × name size, colour `#151515`): as tall as the name's cap height (0.7 × size), 0.9 × that wide, sitting on the first line's baseline, followed by one space of the name font. Its width is reserved on the first line when wrapping, so it always shares the line with the first word. In the vertical layouts it is rotated with the text; in fallback step 4 it is clipped with the name. The same path is drawn in the SVG and the PDF.
 - Logo (optional): centred below the name in the space left above the bottom row; height up to 2.2 × row height, aspect kept, only if at least 2.5 high is available.
 - Bottom row (segments of 2+ days): flag at the right edge (height min(3.4, 0.42 × row), width by the flag's aspect, max 2 × height, 0.08 grey border); city right-aligned immediately left of the flag with a 1.0 gap, bold, 3.0 shrinking to 1.6.
 - One-day segment: name and flag share the row; city is omitted.
+- Paddings: 0.4 free space is kept at the bottom of a segment (below the name, or below the flag in the vertical layouts) and above and below the logo.
 
 **Fallback order** when the horizontal layout does not fit at the minimum name size:
 
@@ -394,8 +397,13 @@ type Shape =
   | { kind: 'rect'; x: number; y: number; w: number; h: number; fill: string }
   | { kind: 'line'; x1: number; y1: number; x2: number; y2: number; stroke: string; width: number }
   | { kind: 'text'; x: number; y: number; text: string; size: number; bold: boolean;
-      color: string; rotate: 0 | 90; align: 'left' | 'right' | 'center' }
-  | { kind: 'image'; x: number; y: number; w: number; h: number; image: ImageData; border: boolean };
+      color: string; rotate: 0 | 90; align: 'left' | 'right' | 'center'; clip?: Rect }
+  | { kind: 'image'; x: number; y: number; w: number; h: number; image: ImageData; border: boolean }
+  | { kind: 'path'; points: { x: number; y: number }[]; stroke: string; width: number; clip?: Rect };
+// text: (x, y) is on the baseline; align says which end of the text the anchor is; rotate 90 turns
+//   the text 90° counter-clockwise around the anchor (reads bottom to top).
+// clip: optional rectangle { x, y, w, h } in page coordinates that limits drawing (fallback step 4, 3.6).
+// path: open polyline with round caps and joins; used for the held check mark (3.6).
 
 type LayoutResult = {
   page: { w: number; h: number; formatId: FormatId; title: string };
@@ -504,6 +512,7 @@ The agent builds the app in six milestones, in order; each ends with a green CI 
 - [ ] Start screen, data folder create / open, permission flow (4.2).
 - [ ] Autosave, atomic write, backups, external change check, error handling (4.3).
 - [ ] Validation, migrations framework, Web Lock, export / import (4.4–4.7).
+- [ ] Seed data (incl. flags) loaded with a dynamic import, only when a new data folder is created, to keep it out of the main bundle.
 
 ### M4 — Editing
 
@@ -622,3 +631,4 @@ Event text is always `#151515`; a custom colour darker than 45 % luminance shows
 - Copying a whole year of events at once.
 - CMYK / print-shop PDF.
 - Upgrade to TypeScript 7 when typescript-eslint supports it.
+- Per-day lane width: an event uses the full column width on days it is alone (as in the reference), instead of the equal split of 3.5. Pending user feedback.
