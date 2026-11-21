@@ -207,23 +207,28 @@ Rules: an exhibition or country in use by an event cannot be deleted (the app ex
   backups/
     kalendar-data_2027-03-14_10-22-05.json
     ...                           newest 30 kept, older deleted
+    kalendar-data_invalid_2027-03-14_10-30-00.json   copy of an invalid file, never deleted
 ```
 
 - First run: the user chooses "Создать новую папку данных" (creates the file with seed data, Appendix A) or "Открыть существующую" (picks a folder containing `kalendar-data.json`).
-- Access uses the File System Access API (`showDirectoryPicker`, read-write). The folder handle is stored in IndexedDB; on later starts the app asks for permission with one click ("Продолжить работу").
+- "Создать" never overwrites: if the picked folder already holds `kalendar-data.json`, the app says so and offers to open that data instead. "Открыть" on a folder without the file explains what is missing.
+- Access uses the File System Access API (`showDirectoryPicker`, read-write). The folder handle is stored in IndexedDB; on later starts the app asks for permission with one click ("Продолжить работу"), or opens the folder directly while the browser still grants the permission. "Выбрать другую папку" forgets the remembered folder.
 
 ### 4.3 Saving
 
 - Autosave after every change, debounced 800 ms; a status indicator shows "Сохранено" / "Сохранение…" / "Ошибка сохранения".
 - Atomic write: `createWritable()` writes to a temporary file that replaces the original only on `close()`; a crash never leaves a half-written file.
-- Before overwriting, the previous file is copied to `backups/` (at most one backup per 10 minutes of editing, plus one on every app start).
+- Before overwriting, the previous file is copied to `backups/` (at most one backup per 10 minutes of editing, plus one on every app start, made right after the file is loaded). Backup names use the local wall-clock time.
+- Every save stamps `savedAt` and `appVersion`. Changing the year or format updates `settings` and is saved too (it is not an undo step).
+- The status is "Сохранение…" while changes are waiting to be written. The app saves when the tab is hidden and warns before the tab closes with unsaved changes.
 - External change check: before each write, compare the file's `lastModified` with the value at last read. If it changed (e.g. a sync tool or another computer), stop autosave and ask: reload from disk, or overwrite.
 - On save failure: keep the data in memory, show a persistent error banner, retry on the next change, offer "Скачать резервную копию" (JSON download).
 
 ### 4.4 Loading and validation
 
-- The file is parsed and validated with a schema (zod). Invalid file: do not overwrite it; show the error and offer to open the newest valid backup.
-- Unknown higher `schemaVersion`: open read-only with a message "файл создан более новой версией приложения".
+- The file is parsed and validated with a schema (zod): shapes, ISO dates, end ≥ start, `#RRGGBB` colours, PNG / SVG data URLs, unique ids, and references from events and exhibitions to existing exhibitions and countries. Unknown fields are dropped.
+- Invalid file: do not overwrite it; show the error and offer to open the newest valid backup. Before that backup replaces it, the invalid file is copied to `backups/kalendar-data_invalid_<time>.json`, which is never pruned and not listed for restore.
+- Unknown higher `schemaVersion`: open read-only with a message "файл создан более новой версией приложения", if the file still matches the current schema; otherwise treat it as invalid.
 
 ### 4.5 Migrations
 
@@ -236,7 +241,8 @@ Rules: an exhibition or country in use by an event cannot be deleted (the app ex
 
 ### 4.7 Backup export and import
 
-- "Экспорт" downloads the current data as JSON. "Импорт" loads a JSON file, validates and migrates it, shows a summary (counts per entity), and replaces the data after confirmation (the old data goes to `backups/` first).
+- "Экспорт" downloads the current data as JSON (`kalendar-data_YYYY-MM-DD.json`). "Импорт" loads a JSON file, validates and migrates it, shows a summary (counts per entity), and replaces the data after confirmation (the old data goes to `backups/` first).
+- The Data screen lists the backups, newest first; "Восстановить" replaces the data with one after confirmation, again backing up the current data first.
 
 ## 5. UI and interaction
 
@@ -252,7 +258,7 @@ The main screen is the calendar itself: the secretary selects days with the mous
 | Event dialog | Add / edit one event |
 | Catalogue | Exhibitions and countries, tabs |
 | Holidays | Holiday list for the selected year(s) |
-| Data | Folder name, last save, backups list, export / import, change folder, app version |
+| Data | Folder name, last save, backups list, export / import, change folder, app version. A modal dialog opened by "Данные" |
 
 ### 5.2 Main screen
 
@@ -423,12 +429,21 @@ interface TextMeasurer { width(text: string, size: number, bold: boolean): numbe
 
 interface Storage {
   status(): Promise<'none' | 'needs-permission' | 'ready'>;
-  connect(mode: 'create' | 'open'): Promise<void>;
-  load(): Promise<DataFile>;
-  save(data: DataFile): Promise<void>;          // atomic, with backup policy (4.3)
-  listBackups(): Promise<BackupInfo[]>;
-  restoreBackup(name: string): Promise<DataFile>;
+  connect(mode: 'create' | 'open' | 'resume'): Promise<'ok' | 'hasData' | 'noData'>;
+  load(): Promise<LoadResult>;                  // { data, readOnly: 'newerVersion' | null, migratedFrom }
+  save(data: DataFile, options?: { force?: boolean }): Promise<void>;
+                                                // atomic, backup policy (4.3); throws
+                                                // ExternalChangeError unless force
+  backupNow(): Promise<void>;                   // before import / restore (4.7)
+  listBackups(): Promise<BackupInfo[]>;         // newest first
+  newestValidBackup(): Promise<BackupInfo | null>;
+  restoreBackup(name: string): Promise<DataFile>; // copies the current file to backups first
+  info(): { folderName: string | null; lastSavedAt: number | null };
+  forget(): Promise<void>;                      // "change folder"
 }
+// `resume` asks permission for the remembered folder. `load` throws DataFileError
+// ('notFound' | 'invalid' | 'newer'). Both adapters share one implementation of the rules
+// (folderStorage.ts) over a minimal DataFolder (stat, read, atomic write, list, remove).
 ```
 
 The layout must be deterministic: the same input gives the same shapes, so it can be unit-tested without a browser.
@@ -470,7 +485,7 @@ The app must never lose data, must print exactly what the preview shows, and mus
 - Schema validation and every migration with fixtures; seed data valid.
 - Store: each action and undo / redo of it.
 
-**End-to-end tests (Playwright)** against the production build, with `memoryStorage` injected through a test flag:
+**End-to-end tests (Playwright)** against the production build, with `memoryStorage` injected through a test flag (`window.__KALENDAR_TEST__ = { storage: 'memory' }`, set by an init script; not reachable from a URL). Storage flows run on the real File System Access adapter with `showDirectoryPicker` stubbed to return a folder of the origin private file system:
 
 - Create an event by dragging 3 days; it appears in the preview and the list.
 - Drag across a month boundary.
@@ -480,6 +495,7 @@ The app must never lose data, must print exactly what the preview shows, and mus
 - Add an exhibition with a logo and a country with a flag (file upload).
 - Each format renders; "Скачать PDF" downloads a file whose page size matches 3.1 and whose text includes the event names (checked with a PDF parser, not pixels).
 - Second tab shows the read-only message.
+- Data folder: create, autosave, resume after reload; existing data never overwritten; invalid file → restore backup; external change → reload / overwrite; export and import; unsupported browser; seed loaded only on create.
 - Offline: after the first load, reload with network off still works.
 
 **Manual checks before each release:** print one A3 and one A4 page on the office printer; open the app on the secretary's PC.

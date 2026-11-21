@@ -32,6 +32,19 @@ npm run dev                       # http://localhost:5173/kalendar-vystavok/
 
 Before every commit: `lint`, `typecheck` and `test` must pass.
 
+### Testing the data folder
+
+The app keeps its data in a folder picked through the File System Access API (SPEC 4.2), which
+Playwright cannot drive. E2E tests therefore either
+
+- inject in-memory storage with an init script:
+  `window.__KALENDAR_TEST__ = { storage: 'memory' }` (see `tests/e2e/helpers.ts`), or
+- stub `showDirectoryPicker` to return a folder of the origin private file system, so the real
+  adapter, permissions and atomic writes run (see `tests/e2e/storage.spec.ts`).
+
+The flag is not reachable from a URL. E2E specs have their own `tsconfig.e2e.json` with DOM
+types, because code passed to `page.evaluate` runs in the browser.
+
 ## Project layout
 
 See SPEC §6.2. `src/domain` and `src/layout` are pure TypeScript (enforced by ESLint).
