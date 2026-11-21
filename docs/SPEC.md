@@ -140,7 +140,8 @@ Text area of a segment: from the lane's left edge (lane 0: from the end of the n
 
 - Library: jsPDF. Vector output: rectangles, lines and text as vector; text as real text with embedded PT Sans Narrow (selectable, searchable).
 - Images (flags, logos) embedded as PNG, each image stored once and reused.
-- Page size exactly as 3.1; no scaling; file name `Kalendar_<title>_<format>.pdf`, e.g. `Kalendar_2027_year.pdf`.
+- Page size exactly as 3.1; no scaling; file name `Kalendar_<title>_<format>.pdf`, e.g. `Kalendar_2027_year.pdf`; the en dash of a `split` title becomes `-` in the file name only (`Kalendar_2027-2028_split.pdf`).
+- jsPDF does not apply kerning, so text is measured without kerning everywhere (layout measurer, SVG preview, PDF); the preview and the PDF then place every glyph alike.
 - Two actions: "Скачать PDF" (download) and "Печать" (opens the PDF in a new tab for the browser's print dialog).
 - The PDF must be pixel-identical in structure to the on-screen preview (same shapes from the same layout result).
 
