@@ -14,7 +14,20 @@ export default defineConfig({
     // The service worker would serve cached builds across tests; only pwa.spec.ts allows it.
     serviceWorkers: 'block',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    {
+      name: 'chromium',
+      testIgnore: /performance\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+    },
+    // SPEC 7.1 time budgets: run alone, after every other test has finished.
+    {
+      name: 'performance',
+      testMatch: /performance\.spec\.ts/,
+      dependencies: ['chromium'],
+      use: { ...devices['Desktop Chrome'] },
+    },
+  ],
   webServer: {
     command: 'npm run build && npm run preview',
     url: `http://localhost:${String(port)}/kalendar-vystavok/`,
