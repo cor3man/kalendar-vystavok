@@ -6,11 +6,42 @@
 
 /* SPEC 5.2: scaled to the window width, at least 900 px wide with horizontal scroll. */
 .page {
+  position: relative;
   min-width: 900px;
   margin: 0 auto;
   box-shadow: 0 1px 4px rgb(0 0 0 / 20%);
   background: #ffffff;
   line-height: 0;
+}
+
+/* SPEC 5.3: transparent layer for day selection, exactly over the page. */
+.selection {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  user-select: none;
+}
+
+.tooltip {
+  position: absolute;
+  z-index: 1;
+  padding: var(--space-1) var(--space-2);
+  border-radius: 4px;
+  background: #2b2b2b;
+  color: #ffffff;
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.hint {
+  margin: var(--space-2) auto 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  text-align: center;
 }
 
 .loading {

@@ -19,6 +19,21 @@ export const ru = {
     'Ноябрь',
     'Декабрь',
   ],
+  /** Month names, genitive, for dates in words: "16–18 марта 2027" (SPEC 5). */
+  monthsGenitive: [
+    'января',
+    'февраля',
+    'марта',
+    'апреля',
+    'мая',
+    'июня',
+    'июля',
+    'августа',
+    'сентября',
+    'октября',
+    'ноября',
+    'декабря',
+  ],
   /** Weekday abbreviations, Monday first (SPEC 3.3). */
   weekdaysShort: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
   /** Followed by DD.MM.YYYY at the top right of the page (SPEC 3.2). */
@@ -178,5 +193,139 @@ export const ru = {
     close: 'Закрыть',
     cancel: 'Отмена',
     confirm: 'Подтверждение',
+    save: 'Сохранить',
+    edit: 'Изменить',
+    delete: 'Удалить',
+    add: 'Добавить',
+    none: '—',
+  },
+
+  /** SPEC 5.2 toolbar, editing part. */
+  editing: {
+    newEvent: '+ Выставка',
+    undo: 'Отменить',
+    redo: 'Повторить',
+    undoHint: 'Отменить (Ctrl+Z)',
+    redoHint: 'Повторить (Ctrl+Y)',
+    catalogue: 'Каталог',
+    holidays: 'Праздники',
+  },
+
+  /** SPEC 5.3: selecting days on the preview. */
+  selection: {
+    hint: 'Выделите дни мышью, чтобы добавить выставку. Щёлкните по выставке, чтобы изменить её.',
+  },
+
+  /** SPEC 5.4. */
+  eventDialog: {
+    titleNew: 'Новая выставка в календаре',
+    titleEdit: 'Выставка в календаре',
+    titleCopy: 'Копия на следующий год',
+    exhibition: 'Выставка',
+    exhibitionPlaceholder: 'Начните вводить название',
+    createExhibition: (name: string) => `Создать выставку «${name}»`,
+    noMatches: 'Ничего не найдено',
+    start: 'Начало',
+    end: 'Окончание',
+    city: 'Город',
+    country: 'Страна',
+    noCountry: 'Не указана',
+    color: 'Цвет',
+    customColor: 'Свой цвет',
+    darkColor: 'Цвет тёмный: чёрный текст на нём будет плохо виден при печати.',
+    held: 'Выставка проведена',
+    note: 'Заметка',
+    noteHint: 'Только для себя, в календаре не печатается.',
+    copyNextYear: 'Копировать на следующий год',
+    copyHint: 'Те же дни недели через год. Проверьте даты и сохраните.',
+    deleted: 'Удалено.',
+    undoDelete: 'Отменить',
+  },
+
+  /** Messages for refused edits (domain EditError). */
+  editErrors: {
+    exhibitionRequired: 'Выберите выставку из каталога или создайте новую.',
+    dateRequired: 'Укажите даты начала и окончания.',
+    nameRequired: 'Введите название.',
+    nameTaken: 'Такое название уже есть.',
+    shortNameLines: 'Короткое название — не больше 4 строк.',
+    inUse: 'Используется в календаре, поэтому удалить нельзя.',
+    notFound: 'Запись не найдена: возможно, её уже удалили.',
+    invalidDate: 'Неверная дата.',
+    invalidColor: 'Неверный цвет.',
+    unknownExhibition: 'Выставка не найдена в каталоге.',
+    unknownCountry: 'Страна не найдена.',
+    dateTaken: 'На эту дату уже есть праздник.',
+  },
+
+  /** SPEC 5.2 event list. */
+  eventList: {
+    title: 'Выставки периода',
+    empty: 'В этом периоде пока нет выставок.',
+    held: 'Проведена',
+    planned: 'Запланирована',
+    columns: {
+      color: 'Цвет',
+      name: 'Выставка',
+      dates: 'Даты',
+      city: 'Город',
+      country: 'Страна',
+      state: 'Статус',
+    },
+  },
+
+  /** SPEC 5.7. */
+  warnings: {
+    title: 'Предупреждения',
+    textOverflow: (name: string) => `Текст не помещается: ${name}`,
+    tripleOverlap: (names: string) => `Три и более выставки в один день: ${names}`,
+    missingFlag: (name: string) => `Нет флага: ${name}`,
+    noHolidays: (year: number) => `Нет праздников на ${String(year)} год`,
+    hint: 'Предупреждения не мешают печати.',
+  },
+
+  /** SPEC 5.5. */
+  catalogue: {
+    title: 'Каталог',
+    exhibitionsTab: 'Выставки',
+    countriesTab: 'Страны',
+    addExhibition: 'Добавить выставку',
+    addCountry: 'Добавить страну',
+    newExhibition: 'Новая выставка',
+    editExhibition: 'Выставка',
+    newCountry: 'Новая страна',
+    editCountry: 'Страна',
+    name: 'Название',
+    shortName: 'Короткое название',
+    shortNameHint: 'Так оно печатается в календаре. Enter — перенос строки, не больше 4 строк.',
+    preview: 'Как это выглядит в ячейке на 3 дня',
+    logo: 'Логотип',
+    flag: 'Флаг',
+    upload: 'Загрузить…',
+    removeImage: 'Убрать',
+    imageHint: 'PNG, JPG или SVG.',
+    defaultCity: 'Город по умолчанию',
+    defaultCountry: 'Страна по умолчанию',
+    defaultColor: 'Цвет по умолчанию',
+    events: 'В календаре',
+    noLogo: 'Без логотипа',
+    noFlag: 'Без флага',
+    usedBy: 'Используется в календаре:',
+    imageTooLarge: 'Картинка слишком большая (больше 200 КБ даже после уменьшения).',
+    imageUnreadable: 'Не удалось прочитать картинку. Загрузите PNG, JPG или SVG.',
+  },
+
+  /** SPEC 5.8. */
+  holidays: {
+    title: 'Праздники',
+    yearTitle: (year: number) => `${String(year)} год`,
+    date: 'Дата',
+    label: 'Надпись',
+    labelHint: 'Без надписи день просто выделяется цветом.',
+    fill: 'Заполнить праздниками Беларуси',
+    filled: (n: number) => `Добавлено праздников: ${String(n)}.`,
+    nothingToFill: 'Все праздники Беларуси уже есть.',
+    empty: 'Праздников нет.',
+    deleteLabel: (date: string) => `Удалить праздник ${date}`,
   },
 } as const;

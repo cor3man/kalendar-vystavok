@@ -1,7 +1,7 @@
 {
   "name": "kalendar-vystavok",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Exhibition calendar: edit in the browser, print as A3/A4 PDF.",
   "type": "module",
   "engines": {

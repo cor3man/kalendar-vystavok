@@ -192,6 +192,10 @@ test('a second tab is read-only', async ({ page, context }) => {
   await expect(second.getByTestId('read-only-banner')).toHaveText(ru.readOnly.otherTab);
   await expect(second.getByTestId('calendar-preview')).toBeVisible();
   await expect(second.getByTestId('save-status')).toHaveCount(0);
+  // M4: no editing in a read-only window.
+  await expect(second.getByRole('button', { name: ru.editing.newEvent })).toBeDisabled();
+  await expect(second.getByRole('button', { name: ru.editing.catalogue })).toBeDisabled();
+  await expect(second.getByTestId('event-list').getByRole('button')).toHaveCount(0);
   await expect(page.getByTestId('read-only-banner')).toHaveCount(0);
 });
 

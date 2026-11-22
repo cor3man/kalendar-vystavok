@@ -4,9 +4,12 @@ import { MAX_YEAR, MIN_YEAR } from '../../state/store.ts';
 import { useCalendarStore } from '../../state/storeContext.ts';
 import type { FormatId } from '../../domain/types.ts';
 import { DataButton } from './DataButton.tsx';
+import { EditorButtons } from './EditorButtons.tsx';
+import { NewEventButton } from './NewEventButton.tsx';
 import { PdfActions } from './PdfActions.tsx';
 import { SaveStatus } from './SaveStatus.tsx';
 import styles from './Toolbar.module.css';
+import { UndoButtons } from './UndoButtons.tsx';
 
 function isFormatId(value: string): value is FormatId {
   return (FORMAT_IDS as readonly string[]).includes(value);
@@ -72,7 +75,10 @@ export function Toolbar() {
           ))}
         </select>
       </label>
+      <NewEventButton />
+      <UndoButtons />
       <div className={styles.end}>
+        <EditorButtons />
         <DataButton />
         <SaveStatus />
         <PdfActions />

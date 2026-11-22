@@ -1,0 +1,109 @@
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.swatchButton {
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 1px solid rgb(0 0 0 / 25%);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.swatchButton[aria-checked='true'] {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+.swatchButton:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.customColor {
+  display: inline-flex;
+  gap: var(--space-1);
+  align-items: center;
+  font-size: var(--font-size-sm);
+}
+
+/* Combobox and select-only listbox (WAI-ARIA patterns). */
+.combo {
+  position: relative;
+}
+
+.listbox {
+  position: absolute;
+  z-index: 2;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 14rem;
+  margin: 2px 0 0;
+  padding: var(--space-1) 0;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-bg);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+  list-style: none;
+}
+
+.option {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+}
+
+.option[aria-selected='true'] {
+  background: #fde6f2;
+}
+
+.optionCreate {
+  font-style: italic;
+}
+
+.optionEmpty {
+  padding: var(--space-1) var(--space-2);
+  color: var(--color-text-muted);
+}
+
+.selectButton {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.flag {
+  width: 1.5rem;
+  height: 1rem;
+  object-fit: contain;
+  border: 1px solid #808080;
+  background: #ffffff;
+}
+
+.flagPlaceholder {
+  display: inline-block;
+  width: 1.5rem;
+  height: 1rem;
+}
+
+.dialogButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.danger {
+  color: #b00020;
+}

@@ -9,13 +9,15 @@ interface DialogProps {
   /** Buttons, right-aligned at the bottom. */
   actions?: ReactNode;
   testId?: string;
+  wide?: boolean;
 }
 
 /**
  * Modal dialog on the native <dialog>: focus is trapped while open and returned to the element
- * that had it before (SPEC 5.9).
+ * that had it before (SPEC 5.9). Returning focus never scrolls: the opener may be off-screen
+ * (e.g. an event-list button the user scrolled away from), and the page must stay where it was.
  */
-export function Dialog({ title, onClose, children, actions, testId }: DialogProps) {
+export function Dialog({ title, onClose, children, actions, testId, wide = false }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
 
@@ -26,14 +28,14 @@ export function Dialog({ title, onClose, children, actions, testId }: DialogProp
     dialog.showModal();
     return () => {
       dialog.close();
-      if (previous instanceof HTMLElement) previous.focus();
+      if (previous instanceof HTMLElement) previous.focus({ preventScroll: true });
     };
   }, []);
 
   return (
     <dialog
       ref={ref}
-      className={styles.dialog}
+      className={wide ? [styles.dialog, styles.wide].join(' ') : styles.dialog}
       aria-labelledby={titleId}
       data-testid={testId}
       onCancel={(e) => {

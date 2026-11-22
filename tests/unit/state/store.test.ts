@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DataFile } from '../../../src/domain/types.ts';
 import {
+  canRedo,
+  canUndo,
   createCalendarStore,
   hasUnsavedChanges,
   type CalendarStore,
@@ -17,6 +19,7 @@ const START = new Date(2027, 2, 14, 10, 0, 0).getTime();
 let storage: MemoryStorage;
 let store: CalendarStore;
 let seedRequests: unknown[];
+let idCounter = 0;
 
 interface SetupOptions {
   status?: StorageStatus;
@@ -30,6 +33,7 @@ function setup({ status = 'none', owner = true, supported = true, file }: SetupO
   storage = createMemoryStorage({ clock, status });
   if (file !== undefined) storage.folder.externalWrite(DATA_FILE_NAME, file);
   seedRequests = [];
+  idCounter = 0;
   store = createCalendarStore({
     storage,
     tabLock: { acquire: () => Promise.resolve(owner) },
@@ -40,6 +44,7 @@ function setup({ status = 'none', owner = true, supported = true, file }: SetupO
       seedRequests.push(request);
       return Promise.resolve(structuredClone(base));
     },
+    newId: () => `id-${String(++idCounter)}`,
   });
   return store.getState();
 }
@@ -373,5 +378,136 @@ describe('change folder', () => {
     expect(store.getState().phase.kind).toBe('ready');
     expect(await store.getState().changeFolder({ discard: true })).toBe(true);
     expect(store.getState().phase.kind).toBe('start');
+  });
+});
+
+describe('editing and undo', () => {
+  const draft = {
+    exhibitionId: 'ex-a',
+    start: '2027-06-03',
+    end: '2027-06-01',
+    city: 'Минск',
+    countryId: null,
+    color: '#CDE8C8',
+    held: false,
+    note: '',
+  };
+
+  it('adds an event with a new id and saves it', async () => {
+    await openWith();
+    const outcome = store.getState().saveEvent({ id: null, draft });
+    expect(outcome).toEqual({ ok: true, id: 'id-1' });
+    expect(store.getState().data?.events.find((e) => e.id === 'id-1')).toMatchObject({
+      start: '2027-06-01',
+      end: '2027-06-03',
+    });
+    expect(canUndo(store.getState())).toBe(true);
+    await vi.advanceTimersByTimeAsync(800);
+    expect(onDisk().events).toHaveLength(2);
+  });
+
+  it('creates the exhibition and the event in one undo step', async () => {
+    await openWith();
+    const outcome = store.getState().saveEvent({ id: null, draft, newExhibitionName: 'Новая' });
+    expect(outcome.ok).toBe(true);
+    const d = store.getState().data;
+    const created = d?.exhibitions.find((x) => x.name === 'Новая');
+    expect(created).toMatchObject({
+      shortName: 'Новая',
+      defaultCity: 'Минск',
+      defaultColor: '#CDE8C8',
+    });
+    expect(d?.events.find((e) => e.exhibitionId === created?.id)).toBeDefined();
+    store.getState().undo();
+    expect(store.getState().data?.exhibitions).toEqual(base.exhibitions);
+    expect(store.getState().data?.events).toEqual(base.events);
+  });
+
+  it('refuses a duplicate new exhibition name without changing anything', async () => {
+    await openWith();
+    const outcome = store.getState().saveEvent({ id: null, draft, newExhibitionName: 'test expo' });
+    expect(outcome).toEqual({ ok: false, error: 'nameTaken' });
+    expect(canUndo(store.getState())).toBe(false);
+    expect(store.getState().revision).toBe(0);
+  });
+
+  it('undoes and redoes edits of every entity, keeping the year and format', async () => {
+    await openWith();
+    const s = () => store.getState();
+    const exhibition = {
+      name: 'B',
+      shortName: 'B',
+      logo: null,
+      defaultCity: '',
+      defaultCountryId: null,
+      defaultColor: '#D2D2D2',
+    };
+    expect(s().saveExhibition(null, exhibition).ok).toBe(true);
+    expect(s().saveCountry(null, { name: 'Казахстан', flag: null }).ok).toBe(true);
+    expect(s().saveHoliday(null, { date: '2027-05-01', label: '' })).toBeNull();
+    expect(s().fillHolidays(2027)).toBeGreaterThan(0);
+    expect(s().fillHolidays(2027)).toBe(0);
+    expect(s().deleteEvent('ev-a').ok).toBe(true);
+    expect(s().deleteHoliday('2027-05-01')).toBeNull();
+    expect(s().history.past).toHaveLength(6);
+    s().setYear(2030);
+    s().setFormat('split');
+    const edited = s().data;
+    for (let i = 0; i < 6; i++) s().undo();
+    expect(s().data).toEqual({ ...base, settings: { lastYear: 2030, lastFormat: 'split' } });
+    expect(canUndo(s())).toBe(false);
+    s().undo();
+    for (let i = 0; i < 6; i++) s().redo();
+    expect(s().data).toEqual(edited);
+    expect(canRedo(s())).toBe(false);
+    s().redo();
+    expect(s().year).toBe(2030);
+  });
+
+  it('reports refused edits', async () => {
+    await openWith();
+    expect(store.getState().deleteExhibition('ex-a')).toEqual({ ok: false, error: 'inUse' });
+    expect(store.getState().deleteCountry('ru')).toEqual({ ok: false, error: 'inUse' });
+    expect(store.getState().saveHoliday(null, { date: '2027-01-01', label: '' })).toBe('dateTaken');
+    expect(store.getState().deleteHoliday('2030-01-01')).toBe('notFound');
+    expect(store.getState().deleteEvent('ev-a').ok).toBe(true);
+    expect(store.getState().deleteExhibition('ex-a').ok).toBe(true);
+    expect(store.getState().deleteCountry('ru').ok).toBe(true);
+  });
+
+  it('counts edits, undo and redo, but not year changes', async () => {
+    await openWith();
+    store.getState().deleteEvent('ev-a');
+    store.getState().setYear(2031);
+    store.getState().undo();
+    store.getState().redo();
+    expect(store.getState().editCount).toBe(3);
+  });
+
+  it('makes import undoable', async () => {
+    await openWith();
+    await store.getState().importData({ ...base, events: [] });
+    expect(store.getState().data?.events).toEqual([]);
+    store.getState().undo();
+    expect(store.getState().data?.events).toEqual(base.events);
+  });
+
+  it('skips ids already in use', async () => {
+    await openWith({ ...base, events: base.events.map((e) => ({ ...e, id: 'id-1' })) });
+    expect(store.getState().saveEvent({ id: null, draft })).toEqual({ ok: true, id: 'id-2' });
+  });
+
+  it('refuses edits and undo when read-only', async () => {
+    await openWith(base, { owner: false });
+    expect(() => store.getState().deleteEvent('ev-a')).toThrow();
+    store.getState().undo();
+    expect(canUndo(store.getState())).toBe(false);
+  });
+
+  it('clears the history when another folder is opened', async () => {
+    await openWith();
+    store.getState().deleteEvent('ev-a');
+    await store.getState().changeFolder();
+    expect(store.getState().history.past).toEqual([]);
   });
 });

@@ -3,6 +3,7 @@ import { systemClock } from '../storage/folderStorage.ts';
 import { createFsAccessStorage, isFileSystemAccessSupported } from '../storage/fsAccessStorage.ts';
 import { createMemoryStorage } from '../storage/memoryStorage.ts';
 import { appVersion } from '../version.ts';
+import { createIdGenerator } from './ids.ts';
 import { createCalendarStore, hasUnsavedChanges, type CalendarStore } from './store.ts';
 import { createWebTabLock } from './tabLock.ts';
 
@@ -25,6 +26,7 @@ export function createAppStore(win: Window = window): CalendarStore {
     supported: memory || isFileSystemAccessSupported(win),
     // The only import of the seed: a separate chunk, fetched when a new folder is created.
     loadSeed: async (request) => (await import('../storage/seed.ts')).buildSeed(request),
+    newId: createIdGenerator(),
   });
 }
 
