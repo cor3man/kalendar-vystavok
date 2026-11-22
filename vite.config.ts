@@ -17,8 +17,8 @@ export default defineConfig({
       registerType: 'prompt',
       // Registered in src/pwa/registerSw.ts, wired to the update banner.
       injectRegister: false,
-      // Own worker (src/sw.ts) bundled by Vite. The generateSW template embeds absolute import
-      // paths in single quotes and breaks when the project path contains an apostrophe.
+      // Workbox precaching with the injected manifest; src/sw.ts is bundled by Vite and holds only
+      // the standard generateSW behaviour (see the comment there for why it is kept).
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.ts',
