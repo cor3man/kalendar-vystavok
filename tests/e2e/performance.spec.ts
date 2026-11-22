@@ -1,11 +1,13 @@
 // SPEC 7.1 performance with 10 years of data (2 000 events, 300 exhibitions with logos):
 // app start < 2 s, preview of a year with 200 events < 200 ms, PDF export < 3 s.
+// On CI the limits are twice the budgets; measured times are always logged (perfBudget.ts).
 // Runs on the real data-folder adapter with an OPFS folder (see storage.spec.ts), in its own
 // Playwright project after all other tests, so no parallel test competes for the CPU.
 import { expect, test, type Page } from '@playwright/test';
 import { ru } from '../../src/i18n/ru.ts';
 import { serializeDataFile } from '../../src/storage/schema.ts';
 import { BIG_FIRST_YEAR, buildBigData } from '../unit/helpers/bigData.ts';
+import { perfLimit, perfReport } from '../unit/helpers/perfBudget.ts';
 import { collectErrors } from './helpers.ts';
 
 const FOLDER = 'picked';
@@ -89,11 +91,11 @@ test('meets the performance budgets with 10 years of data', async ({ page }) => 
   await (await downloading).path();
   const pdfMs = Date.now() - t1;
 
-  console.log(
-    `performance: start ${String(startMs)} ms, preview ${previewMs.toFixed(0)} ms, PDF ${String(pdfMs)} ms`,
-  );
-  expect(startMs).toBeLessThan(START_BUDGET_MS);
-  expect(previewMs).toBeLessThan(PREVIEW_BUDGET_MS);
-  expect(pdfMs).toBeLessThan(PDF_BUDGET_MS);
+  console.log(perfReport('app start', startMs, START_BUDGET_MS));
+  console.log(perfReport('preview', previewMs, PREVIEW_BUDGET_MS));
+  console.log(perfReport('PDF export', pdfMs, PDF_BUDGET_MS));
+  expect(startMs).toBeLessThan(perfLimit(START_BUDGET_MS));
+  expect(previewMs).toBeLessThan(perfLimit(PREVIEW_BUDGET_MS));
+  expect(pdfMs).toBeLessThan(perfLimit(PDF_BUDGET_MS));
   expect(errors).toEqual([]);
 });

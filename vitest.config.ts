@@ -4,6 +4,8 @@ export default defineConfig({
   test: {
     include: ['tests/unit/**/*.test.ts'],
     environment: 'node',
+    // Show console output of passing tests too: the performance test logs its measured times.
+    silent: false,
     coverage: {
       provider: 'v8',
       include: ['src/domain/**', 'src/layout/**', 'src/storage/**'],

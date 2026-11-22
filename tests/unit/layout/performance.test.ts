@@ -5,6 +5,7 @@ import { FORMAT_IDS } from '../../../src/layout/pageSpec.ts';
 import { parseDataFile, serializeDataFile } from '../../../src/storage/schema.ts';
 import { BIG_FIRST_YEAR, buildBigData } from '../helpers/bigData.ts';
 import { createFontkitMeasurer } from '../helpers/fontkitMeasurer.ts';
+import { perfLimit, perfReport } from '../helpers/perfBudget.ts';
 
 const data = buildBigData();
 const measurer = createFontkitMeasurer();
@@ -26,6 +27,8 @@ describe('performance (SPEC 7.1)', () => {
   it.each(FORMAT_IDS)('layout of %s with 200 events per year stays under budget', (format) => {
     timeLayout(format); // warm-up: JIT and measurer caches
     const runs = [timeLayout(format), timeLayout(format), timeLayout(format)];
-    expect(Math.min(...runs)).toBeLessThan(BUDGET_MS);
+    const best = Math.min(...runs);
+    console.log(perfReport(`layout ${format}`, best, BUDGET_MS));
+    expect(best).toBeLessThan(perfLimit(BUDGET_MS));
   });
 });

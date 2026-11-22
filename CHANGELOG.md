@@ -35,7 +35,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 - PDF images are embedded at their largest printed size at 600 dpi (office printer
   resolution): SVG flags were rasterised at 4× their pixel size (about 4 800 dpi); logos are
   only made smaller, never enlarged. A year with 200 events, 30 flags and about 200 logos now
-  exports in 1.8–2.6 s instead of 3.6–3.8 s.
+  exports in 1.8–2.6 s instead of 3.6–3.8 s. The rule is now in SPEC 3.7.
+- Performance tests enforce the SPEC 7.1 budgets locally and allow twice the budget on CI
+  (`process.env.CI`); measured times and budgets are always logged.
+- `src/sw.ts` documents why the injectManifest worker is kept: it holds only the standard
+  Workbox precaching that generateSW would emit, plus `clientsClaim()` on first install.
+
+### Security
+
+- `npm audit --omit=dev`: 0 vulnerabilities in production dependencies. 4 moderate advisories
+  remain in dev-only build tooling (`glob` / `minimatch` via `workbox-build` via
+  `vite-plugin-pwa`); the only offered fix is a breaking downgrade of `vite-plugin-pwa`.
 
 ### Fixed
 
