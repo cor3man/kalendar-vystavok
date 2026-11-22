@@ -8,6 +8,7 @@ export const MARGIN = 8;
 export const ROWS = 31;
 
 export const COLORS = {
+  weekendFill: '#FCE8F1',
   magenta: '#E6007E',
   text: '#151515',
   updated: '#777777',

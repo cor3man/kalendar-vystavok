@@ -5,6 +5,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-11-22 — Weekend tint
+
+### Added
+
+- Saturday and Sunday cells get a pale pink (`#FCE8F1`) background tint in every format, in the preview and the PDF
+  (SPEC 3.3). It is drawn first, below the background year, holiday fills, event fills and grid
+  lines; a labelled holiday fill replaces it and event fills win over it (SPEC 3.4). Day numbers
+  stay magenta.
+- The tint is the single constant `COLORS.weekendFill`; pink was chosen over light grey
+  `#EFEFEF` after printing both (the temporary `?weekendTint=` switch used for the comparison is
+  not part of the release).
+- Unit tests: the tint covers exactly the weekend cells in all four formats, draw order, labelled
+  holidays and events over it.
+
+### Changed
+
+- The background year is now drawn above the weekend tint and below all other fills (SPEC 3.2).
+- SPEC bumped to v1.1.
+
 ## [1.0.0] — 2026-11-22 — M5 Release 1.0
 
 ### Added
