@@ -30,6 +30,7 @@ npm run dev                       # http://localhost:5173/kalendar-vystavok/
 | `npm run format`       | Prettier, write                                    |
 | `npm run format:check` | Prettier, check only (used in CI)                  |
 | `npm run check`        | lint, format check, typecheck, unit tests          |
+| `npm run icons`        | Regenerate the app icons from `public/icon.svg`    |
 
 Before every commit: `npm run check` must pass (it stops at the first failing step). Do not pipe
 it through `tail` or similar without `set -o pipefail`, or a failure is hidden.
@@ -46,6 +47,33 @@ Playwright cannot drive. E2E tests therefore either
 
 The flag is not reachable from a URL. E2E specs have their own `tsconfig.e2e.json` with DOM
 types, because code passed to `page.evaluate` runs in the browser.
+
+Locally, Playwright reuses a preview server that is already running on port 4173 and then
+skips its own build: run `npm run build` first, or stop that server, or the tests run against
+an old `dist/`.
+
+Other e2e notes:
+
+- Service workers are blocked in every spec except `pwa.spec.ts`, which tests install,
+  offline use and the update banner. It simulates a new deploy by changing one character of
+  `dist/sw.js` (and restores it), because Playwright cannot intercept the browser's
+  service-worker update check.
+- `performance.spec.ts` checks the time budgets of SPEC 7.1 with 10 years of data. It runs in
+  its own Playwright project after all other tests, so nothing competes for the CPU.
+- `a11y.spec.ts` runs axe (WCAG A/AA) on every screen and dialog; `keyboard.spec.ts` uses the
+  app without the mouse.
+
+## PWA
+
+`vite-plugin-pwa` with `registerType: 'prompt'` and an own service worker, `src/sw.ts`
+(`injectManifest`; the `generateSW` template breaks on a project path with an apostrophe).
+It precaches the whole build (fonts, seed and jsPDF chunks included), so after the first visit
+everything works offline. `src/pwa/registerSw.ts` reports a waiting version to
+`src/state/updateStore.ts`; the banner "Доступна новая версия — Обновить" saves pending
+changes, activates the new version and reloads only while no dialog is open. An open app checks
+for a new version every hour.
+
+Icons: edit `public/icon.svg`, run `npm run icons`, commit the generated PNGs and `favicon.ico`.
 
 ## Project layout
 
@@ -70,3 +98,16 @@ Dependabot (`.github/dependabot.yml`) checks npm and GitHub Actions weekly.
 
 Semantic version in `package.json`, shown in the app footer. Changes are recorded by hand in
 [CHANGELOG.md](CHANGELOG.md).
+
+Release steps:
+
+1. Bump `version` in `package.json` (and `package-lock.json`, via `npm version <x.y.z>
+--no-git-tag-version`), add the `CHANGELOG.md` entry.
+2. `npm run check`, `npm run build`, `npm run test:e2e`: all green.
+3. Merge the pull request to `main`; CI deploys to GitHub Pages.
+4. Tag the merge commit: `git tag v<x.y.z>` and `git push origin v<x.y.z>`.
+5. Before a release for the secretary: print one A3 and one A4 page on the office printer and
+   open the app on her PC (SPEC 7.2 manual checks). Open apps show the update banner within an
+   hour, or on the next start.
+
+The user guide for the secretary is [docs/USER_GUIDE.ru.md](docs/USER_GUIDE.ru.md).
