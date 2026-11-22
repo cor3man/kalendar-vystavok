@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { useUpdateApi } from '../../state/storeContext.ts';
 import styles from './Dialog.module.css';
 
 interface DialogProps {
@@ -20,17 +21,21 @@ interface DialogProps {
 export function Dialog({ title, onClose, children, actions, testId, wide = false }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
+  const update = useUpdateApi();
 
   useEffect(() => {
     const dialog = ref.current;
     if (dialog === null) return;
     const previous = document.activeElement;
     dialog.showModal();
+    // A pending app update waits until every dialog is closed (SPEC 5.9).
+    update.getState().dialogOpened();
     return () => {
       dialog.close();
+      update.getState().dialogClosed();
       if (previous instanceof HTMLElement) previous.focus({ preventScroll: true });
     };
-  }, []);
+  }, [update]);
 
   return (
     <dialog
@@ -40,6 +45,9 @@ export function Dialog({ title, onClose, children, actions, testId, wide = false
       data-testid={testId}
       onCancel={(e) => {
         e.preventDefault();
+        // React passes the event up the component tree, i.e. to a dialog this one was opened
+        // from (the catalogue under the exhibition form); Esc closes only the topmost dialog.
+        e.stopPropagation();
         onClose();
       }}
     >

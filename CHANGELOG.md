@@ -5,10 +5,66 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 ## [Unreleased]
 
+## [1.0.0] — 2026-11-22 — M5 Release 1.0
+
 ### Added
 
+- Installable app (SPEC 5.9, decision 23): web app manifest («Календарь выставок», Russian,
+  standalone) and icons generated from `public/icon.svg` (`npm run icons`). Chrome and Edge
+  offer "Установить".
+- Offline: a service worker (`src/sw.ts`) precaches the whole build, fonts and the seed and
+  jsPDF chunks included, so after the first visit the app starts, creates a data folder and
+  exports PDFs with no network.
+- Update banner "Доступна новая версия — Обновить": saves pending changes, then switches to the
+  new version. The page never reloads on its own while a dialog is open; it waits until the last
+  dialog is closed. An open app checks for a new version every hour.
+- `docs/USER_GUIDE.ru.md`: install, first run, add / edit / print, backups, updates, problems.
+- E2E: installable manifest, offline reload with folder creation and PDF export, update and "no
+  reload under a dialog" (`pwa.spec.ts`); axe WCAG A/AA audit of every screen and dialog
+  (`a11y.spec.ts`); keyboard-only create / open / delete / undo and focus return
+  (`keyboard.spec.ts`); performance budgets with 10 years of data (`performance.spec.ts`).
+- Unit tests: update store, PDF image sizes, layout time with 10 years of data.
 - Dev: a Claude Code PreToolUse hook (`.claude/hooks/blockPipedChecks.ts`) refuses Bash and
   PowerShell commands that pipe a check into `tail`, `head` or `Select-Object`.
+- Dependencies: `workbox-window` (runtime, used by the service-worker registration);
+  `vite-plugin-pwa`, `@vite-pwa/assets-generator`, `workbox-core`, `workbox-precaching`,
+  `workbox-routing`, `@axe-core/playwright` (dev).
+
+### Changed
+
+- PDF images are embedded at their largest printed size at 600 dpi (office printer
+  resolution): SVG flags were rasterised at 4× their pixel size (about 4 800 dpi); logos are
+  only made smaller, never enlarged. A year with 200 events, 30 flags and about 200 logos now
+  exports in 1.8–2.6 s instead of 3.6–3.8 s. The rule is now in SPEC 3.7.
+- Performance tests enforce the SPEC 7.1 budgets locally and allow twice the budget on CI
+  (`process.env.CI`); measured times and budgets are always logged.
+- `src/sw.ts` documents why the injectManifest worker is kept: it holds only the standard
+  Workbox precaching that generateSW would emit, plus `clientsClaim()` on first install.
+
+### Security
+
+- `npm audit --omit=dev`: 0 vulnerabilities in production dependencies. 4 moderate advisories
+  remain in dev-only build tooling (`glob` / `minimatch` via `workbox-build` via
+  `vite-plugin-pwa`); the only offered fix is a breaking downgrade of `vite-plugin-pwa`.
+
+### Fixed
+
+- Esc in the exhibition or country form closed the catalogue under it too; it now closes only
+  the topmost dialog.
+
+### Performance (SPEC 7.1)
+
+Measured on the development PC with 10 years of data (2 000 events, 300 exhibitions with
+logos), year view: app start 0.4–0.6 s (budget 2 s), preview of a year with 200 events
+86–121 ms (budget 200 ms), first PDF export 1.8–2.6 s (budget 3 s). Layout alone: under
+200 ms in every format (unit test).
+
+### Demo
+
+Open <https://cor3man.github.io/kalendar-vystavok/> in Chrome and press "Установить" in the
+address bar: the app opens in its own window. Close it, turn off the network, start it from
+the desktop icon: it works, and "Скачать PDF" still downloads the calendar. After the next
+deploy the banner "Доступна новая версия" appears; "Обновить" switches to it.
 
 ## [0.5.0] — 2026-11-21 — M4 Editing
 

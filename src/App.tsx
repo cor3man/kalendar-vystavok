@@ -6,6 +6,7 @@ import { useCalendarStore } from './state/storeContext.ts';
 import { ConflictDialog } from './ui/common/ConflictDialog.tsx';
 import { ReadOnlyBanner } from './ui/common/ReadOnlyBanner.tsx';
 import { SaveErrorBanner } from './ui/common/SaveErrorBanner.tsx';
+import { UpdateBanner } from './ui/common/UpdateBanner.tsx';
 import { Toolbar } from './ui/toolbar/Toolbar.tsx';
 import { EditingDialogs } from './ui/main/EditingDialogs.tsx';
 import { MainScreen } from './ui/main/MainScreen.tsx';
@@ -42,6 +43,7 @@ export function App() {
         <h1 className={styles.title}>{ru.appName}</h1>
         {ready && <Toolbar />}
       </header>
+      <UpdateBanner />
       <ReadOnlyBanner />
       <SaveErrorBanner />
       <main className={styles.main}>

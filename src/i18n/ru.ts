@@ -3,6 +3,15 @@
 export const ru = {
   appName: 'Календарь выставок',
   versionLabel: 'Версия',
+  /** Web app manifest (SPEC 5.9). */
+  manifestDescription: 'Календарь выставок компании: редактирование и печать в A3 и A4.',
+
+  /** SPEC 5.9: update banner. */
+  update: {
+    available: 'Доступна новая версия',
+    apply: 'Обновить',
+    applying: 'Обновление…',
+  },
 
   /** Month names, nominative (header band prints them in capitals). */
   months: [
