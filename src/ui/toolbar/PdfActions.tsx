@@ -5,6 +5,7 @@ import { getCanvasMeasurer } from '../../render/canvasMeasurer.ts';
 import type { PdfFile } from '../../render/pdf/exportPdf.ts';
 import { todayISO } from '../../state/clock.ts';
 import { useStoreApi } from '../../state/storeContext.ts';
+import { parseWeekendTint } from '../calendar/weekendTintParam.ts';
 import { downloadBlob } from '../common/download.ts';
 import styles from './Toolbar.module.css';
 
@@ -28,7 +29,14 @@ export function PdfActions() {
       import('../../render/pdf/exportPdf.ts'),
     ]);
     // Same inputs and measurer as the preview: the layout is deterministic, so the shapes match.
-    const layout = layoutCalendar({ data, year, format, exportDate: todayISO(), measurer });
+    const layout = layoutCalendar({
+      data,
+      year,
+      format,
+      exportDate: todayISO(),
+      measurer,
+      weekendFill: parseWeekendTint(window.location.search),
+    });
     return createPdf(layout);
   }
 

@@ -9,7 +9,9 @@ import {
   pageMonths,
   pageTitle,
   SIZES,
+  WEEKEND_TINTS,
 } from '../../../src/layout/pageSpec.ts';
+import { daysInMonth, toISO, weekday } from '../../../src/domain/dates.ts';
 import type { LayoutResult, Shape, TextShape } from '../../../src/layout/shapes.ts';
 import type { DataFile, Event, FormatId } from '../../../src/domain/types.ts';
 import { buildSeed } from '../../../src/storage/seed.ts';
@@ -183,7 +185,7 @@ describe('layoutCalendar invariants', () => {
     expect(run({ format: 'split' })).toEqual(run({ format: 'split' }));
   });
 
-  it('draws grid lines above all fills and the background year first', () => {
+  it('draws grid lines above all fills and the background year above the weekend tint', () => {
     const r = run();
     const firstLine = r.shapes.findIndex((s) => s.kind === 'line');
     const band = r.shapes.findIndex((s) => s.kind === 'rect' && s.fill === COLORS.headerFill);
@@ -192,13 +194,14 @@ describe('layoutCalendar invariants', () => {
       .map((s) => s.kind)
       .lastIndexOf('rect');
     expect(lastGridFill).toBeLessThan(firstLine);
-    expect(r.shapes[0]).toMatchObject({
-      kind: 'text',
-      text: '2027',
-      color: COLORS.backgroundYear,
-      align: 'right',
-    });
-    const bgWidth = measurer.width('2027', (r.shapes[0] as TextShape).size, true);
+    const bg = r.shapes.findIndex((s) => s.kind === 'text' && s.color === COLORS.backgroundYear);
+    expect(r.shapes[bg]).toMatchObject({ kind: 'text', text: '2027', align: 'right' });
+    // Only weekend tint rects come before the background year.
+    expect(bg).toBeGreaterThan(0);
+    expect(
+      r.shapes.slice(0, bg).every((s) => s.kind === 'rect' && s.fill === COLORS.weekendFill),
+    ).toBe(true);
+    const bgWidth = measurer.width('2027', (r.shapes[bg] as TextShape).size, true);
     expect(bgWidth).toBeCloseTo(r.grid.colW * 4);
   });
 });
@@ -305,6 +308,97 @@ describe('layoutCalendar content', () => {
       ]),
     });
     expect(r.hits).toEqual([]);
+  });
+});
+
+describe('weekend tint (3.3)', () => {
+  /** Day of each rect filled with `fill`, keyed by ISO date, with its index in the shapes. */
+  function filledCells(r: LayoutResult, fill: string): Map<string, number> {
+    const cells = new Map<string, number>();
+    r.shapes.forEach((s, i) => {
+      if (s.kind !== 'rect' || s.fill !== fill) return;
+      expect(s.w).toBeCloseTo(r.grid.colW);
+      expect(s.h).toBeCloseTo(r.grid.rowH);
+      const iso = dayAt(r.grid, s.x + s.w / 2, s.y + s.h / 2);
+      expect(iso).not.toBeNull();
+      expect(cells.has(iso ?? '')).toBe(false);
+      cells.set(iso ?? '', i);
+    });
+    return cells;
+  }
+
+  function weekendDays(format: FormatId, year: number): string[] {
+    return pageMonths(format, year).flatMap(({ year: y, month }) =>
+      Array.from({ length: daysInMonth(y, month) }, (_, i) => toISO(y, month, i + 1)).filter(
+        (iso) => weekday(iso) >= 5,
+      ),
+    );
+  }
+
+  const bare: DataFile = { ...seed, events: [], holidays: [] };
+
+  it.each(FORMAT_IDS)('%s: fills every Saturday and Sunday cell and nothing else', (format) => {
+    const r = run({ format, data: bare });
+    const tinted = [...filledCells(r, COLORS.weekendFill).keys()].sort();
+    expect(tinted).toEqual(weekendDays(format, 2027).sort());
+  });
+
+  it.each(FORMAT_IDS)('%s: tint is drawn before the background year and all fills', (format) => {
+    const r = run({ format });
+    const tints = [...filledCells(r, COLORS.weekendFill).values()];
+    const bg = r.shapes.findIndex((s) => s.kind === 'text' && s.color === COLORS.backgroundYear);
+    const otherRects = r.shapes
+      .map((s, i) => (s.kind === 'rect' && s.fill !== COLORS.weekendFill ? i : -1))
+      .filter((i) => i >= 0);
+    expect(tints.length).toBeGreaterThan(0);
+    expect(Math.max(...tints)).toBeLessThan(bg);
+    expect(Math.min(...otherRects)).toBeGreaterThan(bg);
+  });
+
+  it.each(FORMAT_IDS)('%s: a labelled holiday fill replaces the tint', (format) => {
+    const r = run({ format });
+    const tinted = filledCells(r, COLORS.weekendFill);
+    const holidayFilled = filledCells(r, COLORS.holidayFill);
+    for (const iso of weekendDays(format, 2027)) {
+      // Each weekend cell has exactly one of the two fills.
+      expect(tinted.has(iso) !== holidayFilled.has(iso)).toBe(true);
+    }
+  });
+
+  it('labelled weekend holidays get the holiday fill, unlabelled ones keep the tint', () => {
+    const r = run();
+    const tinted = filledCells(r, COLORS.weekendFill);
+    const holidayFilled = filledCells(r, COLORS.holidayFill);
+    // 2 May 2027: Easter, Sunday, labelled. 7 Nov 2027: Sunday, labelled.
+    for (const iso of ['2027-05-02', '2027-11-07']) {
+      expect(holidayFilled.has(iso)).toBe(true);
+      expect(tinted.has(iso)).toBe(false);
+    }
+    // 1 May 2027: Saturday, unlabelled holiday.
+    expect(tinted.has('2027-05-01')).toBe(true);
+    expect(holidayFilled.has('2027-05-01')).toBe(false);
+  });
+
+  it('event fills are drawn above the tint, also on a covered labelled holiday', () => {
+    const r = run({ data: withEvents([event('e', '2027-05-01', '2027-05-03')]) });
+    const tinted = filledCells(r, COLORS.weekendFill);
+    const holidayFilled = filledCells(r, COLORS.holidayFill);
+    const eventRect = r.shapes.findIndex((s) => s.kind === 'rect' && s.fill === '#B3A7E0');
+    expect(holidayFilled.has('2027-05-02')).toBe(false);
+    for (const iso of ['2027-05-01', '2027-05-02']) {
+      expect(tinted.get(iso)).toBeLessThan(eventRect);
+    }
+  });
+
+  it('uses the injected candidate tint', () => {
+    const r = run({ weekendFill: WEEKEND_TINTS.pink });
+    expect(filledCells(r, COLORS.weekendFill).size).toBe(0);
+    expect(filledCells(r, WEEKEND_TINTS.pink).size).toBeGreaterThan(0);
+  });
+
+  it('defaults to the grey candidate', () => {
+    expect(COLORS.weekendFill).toBe(WEEKEND_TINTS.grey);
+    expect(WEEKEND_TINTS).toEqual({ grey: '#EFEFEF', pink: '#FCE8F1' });
   });
 });
 

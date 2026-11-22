@@ -31,6 +31,8 @@ export interface LayoutInput {
   format: FormatId;
   exportDate: ISODate;
   measurer: TextMeasurer;
+  /** Weekend tint (3.3); defaults to COLORS.weekendFill. TEMPORARY: for the colour comparison. */
+  weekendFill?: string;
 }
 
 function text(
@@ -83,7 +85,7 @@ function isDrawableEvent(e: { start: string; end: string }): boolean {
 }
 
 export function layoutCalendar(input: LayoutInput): LayoutResult {
-  const { data, year, format, exportDate, measurer: m } = input;
+  const { data, year, format, exportDate, measurer: m, weekendFill = COLORS.weekendFill } = input;
   const g = pageGeometry(format, year);
   const { spec, months, grid } = g;
   const title = pageTitle(format, year);
@@ -104,7 +106,24 @@ export function layoutCalendar(input: LayoutInput): LayoutResult {
   const isCovered = (column: number, day: number): boolean =>
     covered.has(`${String(column)}:${String(day)}`);
 
-  // 1. Background year, below all fills (3.2).
+  /** A labelled holiday not covered by an event gets the holiday fill (3.4). */
+  const hasHolidayFill = (iso: ISODate, column: number, day: number): boolean => {
+    const label = holidays.get(iso);
+    return label !== undefined && label !== '' && !isCovered(column, day);
+  };
+
+  // 0. Weekend tint, below everything (3.3). Covered cells keep it: lanes can leave part of a
+  // cell empty (3.5), and the event fill drawn later wins where it is.
+  months.forEach(({ year: y, month }, column) => {
+    for (let day = 1; day <= daysInMonth(y, month); day++) {
+      const iso = toISO(y, month, day);
+      if (weekday(iso) >= 5 && !hasHolidayFill(iso, column, day)) {
+        shapes.push({ kind: 'rect', ...cellRect(g, column, day), fill: weekendFill });
+      }
+    }
+  });
+
+  // 1. Background year, above the weekend tint and below all other fills (3.2).
   const bgYear = String(year);
   const bgSize = grid.w / 3 / m.width(bgYear, 1, true);
   shapes.push(
@@ -114,8 +133,7 @@ export function layoutCalendar(input: LayoutInput): LayoutResult {
   // 2. Holiday fills (3.4); an event fill wins.
   months.forEach(({ year: y, month }, column) => {
     for (let day = 1; day <= daysInMonth(y, month); day++) {
-      const label = holidays.get(toISO(y, month, day));
-      if (label !== undefined && label !== '' && !isCovered(column, day)) {
+      if (hasHolidayFill(toISO(y, month, day), column, day)) {
         shapes.push({ kind: 'rect', ...cellRect(g, column, day), fill: COLORS.holidayFill });
       }
     }
