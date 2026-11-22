@@ -45,6 +45,9 @@ export function Dialog({ title, onClose, children, actions, testId, wide = false
       data-testid={testId}
       onCancel={(e) => {
         e.preventDefault();
+        // React passes the event up the component tree, i.e. to a dialog this one was opened
+        // from (the catalogue under the exhibition form); Esc closes only the topmost dialog.
+        e.stopPropagation();
         onClose();
       }}
     >

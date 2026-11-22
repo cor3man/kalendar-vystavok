@@ -154,3 +154,21 @@ test('edits holidays: delete, add with a label, fill the Belarus defaults', asyn
   await year.getByRole('button', { name: ru.holidays.fill }).click();
   await expect(year).toContainText(ru.holidays.nothingToFill);
 });
+
+// Bug: Esc in a dialog opened over the catalogue also closed the catalogue, because React
+// passes the inner dialog's cancel event up to the outer dialog's handler.
+test('Esc closes only the topmost dialog', async ({ page }) => {
+  await openWithSeed(page);
+  const catalogue = await openCatalogue(page);
+  await catalogue.getByRole('button', { name: ru.catalogue.addExhibition }).click();
+  const form = page.getByTestId('exhibition-form');
+  await expect(form).toBeVisible();
+
+  await page.keyboard.press('Escape');
+  await expect(form).toBeHidden();
+  await expect(catalogue).toBeVisible();
+  await expect(catalogue.getByRole('button', { name: ru.catalogue.addExhibition })).toBeFocused();
+
+  await page.keyboard.press('Escape');
+  await expect(catalogue).toBeHidden();
+});
