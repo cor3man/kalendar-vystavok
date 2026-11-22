@@ -5,6 +5,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 ## [Unreleased]
 
+### Added
+
+- Dev: a Claude Code PreToolUse hook (`.claude/hooks/blockPipedChecks.ts`) refuses Bash and
+  PowerShell commands that pipe a check into `tail`, `head` or `Select-Object`.
+
 ## [0.5.0] — 2026-11-21 — M4 Editing
 
 ### Added

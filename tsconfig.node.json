@@ -21,6 +21,13 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["vite.config.ts", "vitest.config.ts", "playwright.config.ts", "tests", "scripts"],
+  "include": [
+    "vite.config.ts",
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "tests",
+    "scripts",
+    ".claude/hooks"
+  ],
   "exclude": ["tests/e2e"]
 }
