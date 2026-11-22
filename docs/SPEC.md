@@ -99,7 +99,7 @@ One layout engine computes the page as a list of shapes in millimetres; the on-s
 
 - Day number at left (regular, 2.7) followed by the weekday abbreviation (Пн Вт Ср Чт Пт Сб Вс, regular, 1.5) with a 0.4 gap, both on one baseline, vertically centred, 1.3 from the left edge.
 - Saturdays, Sundays and holidays: number and weekday in magenta `#E6007E`; other days `#151515`.
-- Saturday and Sunday cells are filled with the weekend tint, a single colour constant. Two candidates are being compared: light grey `#EFEFEF` (default) and pale pink `#FCE8F1`; until one is chosen, the URL parameter `?weekendTint=grey|pink` picks the tint for the preview and the PDF (temporary, removed after the choice). The tint is drawn first, below the background year, holiday fills, event fills and grid lines. A labelled holiday fill replaces it (3.4); an event fill wins over it (3.5).
+- Saturday and Sunday cells are filled with the weekend tint, pale pink `#FCE8F1`. The tint is drawn first, below the background year, holiday fills, event fills and grid lines. A labelled holiday fill replaces it (3.4); an event fill wins over it (3.5).
 - The **number zone** is the left 7.4 of each cell; event text never enters it.
 
 ### 3.4 Holidays

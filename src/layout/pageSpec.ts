@@ -7,15 +7,8 @@ import type { Rect } from './shapes.ts';
 export const MARGIN = 8;
 export const ROWS = 31;
 
-/**
- * Candidate weekend tints (SPEC 3.3), compared through a temporary URL switch.
- * TEMPORARY: once one is chosen, keep only COLORS.weekendFill.
- */
-export const WEEKEND_TINTS = { grey: '#EFEFEF', pink: '#FCE8F1' } as const;
-export type WeekendTintId = keyof typeof WEEKEND_TINTS;
-
 export const COLORS = {
-  weekendFill: WEEKEND_TINTS.grey,
+  weekendFill: '#FCE8F1',
   magenta: '#E6007E',
   text: '#151515',
   updated: '#777777',

@@ -31,8 +31,6 @@ export interface LayoutInput {
   format: FormatId;
   exportDate: ISODate;
   measurer: TextMeasurer;
-  /** Weekend tint (3.3); defaults to COLORS.weekendFill. TEMPORARY: for the colour comparison. */
-  weekendFill?: string;
 }
 
 function text(
@@ -85,7 +83,7 @@ function isDrawableEvent(e: { start: string; end: string }): boolean {
 }
 
 export function layoutCalendar(input: LayoutInput): LayoutResult {
-  const { data, year, format, exportDate, measurer: m, weekendFill = COLORS.weekendFill } = input;
+  const { data, year, format, exportDate, measurer: m } = input;
   const g = pageGeometry(format, year);
   const { spec, months, grid } = g;
   const title = pageTitle(format, year);
@@ -118,7 +116,7 @@ export function layoutCalendar(input: LayoutInput): LayoutResult {
     for (let day = 1; day <= daysInMonth(y, month); day++) {
       const iso = toISO(y, month, day);
       if (weekday(iso) >= 5 && !hasHolidayFill(iso, column, day)) {
-        shapes.push({ kind: 'rect', ...cellRect(g, column, day), fill: weekendFill });
+        shapes.push({ kind: 'rect', ...cellRect(g, column, day), fill: COLORS.weekendFill });
       }
     }
   });

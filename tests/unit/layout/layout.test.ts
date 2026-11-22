@@ -9,7 +9,6 @@ import {
   pageMonths,
   pageTitle,
   SIZES,
-  WEEKEND_TINTS,
 } from '../../../src/layout/pageSpec.ts';
 import { daysInMonth, toISO, weekday } from '../../../src/domain/dates.ts';
 import type { LayoutResult, Shape, TextShape } from '../../../src/layout/shapes.ts';
@@ -390,15 +389,8 @@ describe('weekend tint (3.3)', () => {
     }
   });
 
-  it('uses the injected candidate tint', () => {
-    const r = run({ weekendFill: WEEKEND_TINTS.pink });
-    expect(filledCells(r, COLORS.weekendFill).size).toBe(0);
-    expect(filledCells(r, WEEKEND_TINTS.pink).size).toBeGreaterThan(0);
-  });
-
-  it('defaults to the grey candidate', () => {
-    expect(COLORS.weekendFill).toBe(WEEKEND_TINTS.grey);
-    expect(WEEKEND_TINTS).toEqual({ grey: '#EFEFEF', pink: '#FCE8F1' });
+  it('is pale pink', () => {
+    expect(COLORS.weekendFill).toBe('#FCE8F1');
   });
 });
 
