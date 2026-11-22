@@ -1,4 +1,4 @@
-# Календарь выставок — Specification v1.0
+# Календарь выставок — Specification v1.1
 
 Nov 19, 2026 · @Aleks
 
@@ -93,19 +93,20 @@ One layout engine computes the page as a list of shapes in millimetres; the on-s
 - Month header band: height 8, fill `#2B2B2B`, month names in white bold capitals, centred; 4.6 on A3, 3.6 on A4.
 - Grid: one column per month (equal widths), 31 rows (equal heights) filling the rest of the page. Days that do not exist (e.g. 30 Feb) are empty cells.
 - Grid lines: 0.2 wide, colour `#2A1F8F`, drawn **above** all fills so every day border stays visible inside events.
-- Background year: the 4-digit year (for `split`: Y), bold, colour `#E2E2E2`, anchored to the grid's bottom right, sized so its width is one third of the grid width (about 4 months on A3). Drawn below all fills.
+- Background year: the 4-digit year (for `split`: Y), bold, colour `#E2E2E2`, anchored to the grid's bottom right, sized so its width is one third of the grid width (about 4 months on A3). Drawn above the weekend tint (3.3) and below all other fills.
 
 ### 3.3 Day cell
 
 - Day number at left (regular, 2.7) followed by the weekday abbreviation (Пн Вт Ср Чт Пт Сб Вс, regular, 1.5) with a 0.4 gap, both on one baseline, vertically centred, 1.3 from the left edge.
 - Saturdays, Sundays and holidays: number and weekday in magenta `#E6007E`; other days `#151515`.
+- Saturday and Sunday cells are filled with the weekend tint, a single colour constant. Two candidates are being compared: light grey `#EFEFEF` (default) and pale pink `#FCE8F1`; until one is chosen, the URL parameter `?weekendTint=grey|pink` picks the tint for the preview and the PDF (temporary, removed after the choice). The tint is drawn first, below the background year, holiday fills, event fills and grid lines. A labelled holiday fill replaces it (3.4); an event fill wins over it (3.5).
 - The **number zone** is the left 7.4 of each cell; event text never enters it.
 
 ### 3.4 Holidays
 
 - A holiday colours its number magenta (3.3).
-- A holiday with a label also fills the whole cell with `#F9C3CB` and shows the label right-aligned, bold, `#E3311A`, max 3.3, shrinking to fit (min 1.6).
-- If an event covers a holiday cell, the event fill wins; the number stays magenta; the label is hidden.
+- A holiday with a label also fills the whole cell with `#F9C3CB` (replacing the weekend tint, 3.3) and shows the label right-aligned, bold, `#E3311A`, max 3.3, shrinking to fit (min 1.6).
+- If an event covers a holiday cell, the event fill wins; the number stays magenta; the label is hidden. Event fills likewise win over the weekend tint.
 
 ### 3.5 Events, segments and lanes
 
