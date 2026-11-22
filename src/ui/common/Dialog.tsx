@@ -14,7 +14,8 @@ interface DialogProps {
 
 /**
  * Modal dialog on the native <dialog>: focus is trapped while open and returned to the element
- * that had it before (SPEC 5.9).
+ * that had it before (SPEC 5.9). Returning focus never scrolls: the opener may be off-screen
+ * (e.g. an event-list button the user scrolled away from), and the page must stay where it was.
  */
 export function Dialog({ title, onClose, children, actions, testId, wide = false }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -27,7 +28,7 @@ export function Dialog({ title, onClose, children, actions, testId, wide = false
     dialog.showModal();
     return () => {
       dialog.close();
-      if (previous instanceof HTMLElement) previous.focus();
+      if (previous instanceof HTMLElement) previous.focus({ preventScroll: true });
     };
   }, []);
 

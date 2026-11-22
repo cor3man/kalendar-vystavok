@@ -71,7 +71,11 @@ export function SelectionLayer({ layout, enabled, onCreate, onEdit }: SelectionL
     const p = toPage(e);
     const day = p === null ? null : dayAt(grid, p.x, p.y);
     if (p === null || day === null) return;
+    // preventDefault stops text selection during the drag, but also keeps the focus where it was
+    // (e.g. on an event-list button far below). Drop it, as a normal click on the page would, so a
+    // dialog opened from here does not hand the focus back to that element when it closes.
     e.preventDefault();
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     e.currentTarget.setPointerCapture(e.pointerId);
     setDrag({
       pointerId: e.pointerId,

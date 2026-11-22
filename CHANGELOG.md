@@ -37,6 +37,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
   L* < 45; the offline e2e test comes with the PWA in M5.
 - A read-only window (other tab, newer file) disables all editing.
 
+### Fixed
+
+- Closing a dialog no longer scrolls the page. Focus still returns to the button that opened it,
+  but without scrolling; a click on the calendar no longer leaves the focus on an event-list
+  button further down, which closing the dialog used to scroll to.
+
 ### Demo
 
 Open the app with a data folder. Drag over 10–12 August: the dialog opens with these dates; type
