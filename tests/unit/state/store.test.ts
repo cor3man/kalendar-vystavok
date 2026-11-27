@@ -11,7 +11,7 @@ import { DATA_FILE_NAME } from '../../../src/storage/backupPolicy.ts';
 import { createMemoryStorage, type MemoryStorage } from '../../../src/storage/memoryStorage.ts';
 import { parseDataFile, serializeDataFile } from '../../../src/storage/schema.ts';
 import type { StorageStatus } from '../../../src/storage/Storage.ts';
-import fixture from '../../fixtures/v1-minimal.json' with { type: 'json' };
+import fixture from '../../fixtures/v2-minimal.json' with { type: 'json' };
 
 const base = fixture as DataFile;
 const START = new Date(2027, 2, 14, 10, 0, 0).getTime();
@@ -327,7 +327,10 @@ describe('import, restore, export', () => {
   it('backs up the current file, then replaces the data', async () => {
     await openWith();
     vi.setSystemTime(START + 1000);
-    const imported = { ...base, settings: { lastYear: 2035, lastFormat: 'year' as const } };
+    const imported = {
+      ...base,
+      settings: { ...base.settings, lastYear: 2035, lastFormat: 'year' as const },
+    };
     const parsed = store.getState().readImportFile(serializeDataFile(imported));
     expect(parsed.kind).toBe('ok');
     await store.getState().importData(imported);
@@ -454,7 +457,10 @@ describe('editing and undo', () => {
     s().setFormat('split');
     const edited = s().data;
     for (let i = 0; i < 6; i++) s().undo();
-    expect(s().data).toEqual({ ...base, settings: { lastYear: 2030, lastFormat: 'split' } });
+    expect(s().data).toEqual({
+      ...base,
+      settings: { ...base.settings, lastYear: 2030, lastFormat: 'split' },
+    });
     expect(canUndo(s())).toBe(false);
     s().undo();
     for (let i = 0; i < 6; i++) s().redo();

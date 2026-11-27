@@ -14,10 +14,18 @@ describe('buildSeed', () => {
   it('has the header fields and settings', () => {
     expect(seed).toMatchObject({
       app: 'kalendar-vystavok',
-      schemaVersion: 1,
+      schemaVersion: 2,
       appVersion: '0.2.0',
       savedAt: '2026-11-20T10:00:00.000Z',
-      settings: { lastYear: 2027, lastFormat: 'year' },
+      settings: {
+        lastYear: 2027,
+        lastFormat: 'year',
+        selectionMode: 'click-shift',
+        weekendTint: 'grey',
+        heldMark: 'show',
+        startup: 'last',
+        recentColors: [],
+      },
     });
   });
 

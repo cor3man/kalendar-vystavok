@@ -1,16 +1,15 @@
 // Migrations framework (SPEC 4.5): one pure function per version step, run in order on load.
 
+import type { Migration, RawData } from './types.ts';
+import { v1ToV2 } from './v1ToV2.ts';
+
+export type { Migration, RawData } from './types.ts';
+
 /** Schema version written by this app version. */
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 2;
 
-/** Plain JSON object as read from disk, before validation. */
-export type RawData = Record<string, unknown>;
-
-/** Upgrades a file of version N to version N + 1. Must be pure and set `schemaVersion: N + 1`. */
-export type Migration = (raw: RawData) => RawData;
-
-/** Steps keyed by the version they upgrade from. Empty while the schema is at version 1. */
-export const MIGRATIONS: Readonly<Record<number, Migration>> = {};
+/** Steps keyed by the version they upgrade from. */
+export const MIGRATIONS: Readonly<Record<number, Migration>> = { 1: v1ToV2 };
 
 export class MigrationError extends Error {
   override readonly name = 'MigrationError';

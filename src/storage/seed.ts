@@ -1,6 +1,7 @@
 // Seed data (SPEC Appendix A): the 2027 events of the reference PDF, 30 countries, Belarus holidays.
 import { belarusHolidays } from '../domain/holidays.ts';
 import { isPaletteId, paletteHex } from '../domain/palette.ts';
+import { DEFAULT_PREFERENCES } from '../domain/settings.ts';
 import type { Country, DataFile, Event, Exhibition, Holiday, ImageData } from '../domain/types.ts';
 import seedJson from './seed.json' with { type: 'json' };
 import seedFlags from './seedFlags.json' with { type: 'json' };
@@ -63,13 +64,13 @@ export function buildSeed({ currentYear, appVersion, savedAt }: SeedOptions): Da
 
   return {
     app: 'kalendar-vystavok',
-    schemaVersion: 1,
+    schemaVersion: 2,
     savedAt,
     appVersion,
     countries,
     exhibitions,
     events,
     holidays,
-    settings: { lastYear: 2027, lastFormat: 'year' },
+    settings: { lastYear: 2027, lastFormat: 'year', ...DEFAULT_PREFERENCES, recentColors: [] },
   };
 }

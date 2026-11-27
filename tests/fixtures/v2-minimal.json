@@ -1,0 +1,61 @@
+{
+  "app": "kalendar-vystavok",
+  "schemaVersion": 2,
+  "savedAt": "2027-03-14T10:22:05.000Z",
+  "appVersion": "0.4.0",
+  "countries": [
+    {
+      "id": "ru",
+      "name": "Россия",
+      "flag": null
+    },
+    {
+      "id": "de",
+      "name": "Германия",
+      "flag": {
+        "dataUrl": "data:image/png;base64,iVBORw0KGgo=",
+        "width": 160,
+        "height": 96
+      }
+    }
+  ],
+  "exhibitions": [
+    {
+      "id": "ex-a",
+      "name": "Test Expo",
+      "shortName": "Test\nExpo",
+      "logo": null,
+      "defaultCity": "Москва",
+      "defaultCountryId": "ru",
+      "defaultColor": "#B3A7E0"
+    }
+  ],
+  "events": [
+    {
+      "id": "ev-a",
+      "exhibitionId": "ex-a",
+      "start": "2027-03-31",
+      "end": "2027-04-02",
+      "city": "Москва",
+      "countryId": "ru",
+      "color": "#B3A7E0",
+      "held": true,
+      "note": "internal"
+    }
+  ],
+  "holidays": [
+    {
+      "date": "2027-01-01",
+      "label": ""
+    }
+  ],
+  "settings": {
+    "lastYear": 2027,
+    "lastFormat": "h1",
+    "selectionMode": "click-shift",
+    "weekendTint": "pink",
+    "heldMark": "show",
+    "startup": "last",
+    "recentColors": []
+  }
+}

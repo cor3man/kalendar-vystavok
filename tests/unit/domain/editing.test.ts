@@ -19,7 +19,7 @@ import { weekday } from '../../../src/domain/dates.ts';
 import { belarusHolidays } from '../../../src/domain/holidays.ts';
 import type { DataFile } from '../../../src/domain/types.ts';
 import { parseDataFile, serializeDataFile } from '../../../src/storage/schema.ts';
-import fixture from '../../fixtures/v1-minimal.json' with { type: 'json' };
+import fixture from '../../fixtures/v2-minimal.json' with { type: 'json' };
 
 const base = fixture as DataFile;
 

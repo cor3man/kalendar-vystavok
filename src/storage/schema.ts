@@ -1,6 +1,7 @@
 // zod schema of the data file (SPEC 4.1, 4.4) and the parse → migrate → validate pipeline.
 import { z } from 'zod';
 import { compareISO, isValidISO } from '../domain/dates.ts';
+import { MAX_RECENT_COLORS } from '../domain/settings.ts';
 import type { DataFile } from '../domain/types.ts';
 import {
   CURRENT_SCHEMA_VERSION,
@@ -66,6 +67,16 @@ const body = z
     settings: z.object({
       lastYear: z.number().int(),
       lastFormat: z.enum(['year', 'h1', 'h2', 'split']),
+      selectionMode: z.enum(['click-shift', 'drag']),
+      weekendTint: z.union([z.enum(['grey', 'pink']), hexColor]),
+      heldMark: z.enum(['show', 'none']),
+      startup: z.enum(['last', 'current']),
+      recentColors: z
+        .array(hexColor)
+        .max(MAX_RECENT_COLORS)
+        .refine((list) => new Set(list.map((c) => c.toUpperCase())).size === list.length, {
+          message: 'Duplicate colour',
+        }),
     }),
   })
   .superRefine((d, ctx) => {
