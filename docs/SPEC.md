@@ -137,7 +137,7 @@ Text area of a segment: from the lane's left edge (lane 0: from the end of the n
 **Horizontal layout (preferred)**
 
 - Name: bold, right-aligned, top-aligned 0.6 below the segment top, word-wrapped, max 4 lines, line height 1.15 × size. Size: largest of 3.4 → 2.1 in 0.1 steps that fits. Manual line breaks from the short name (4.1) are respected.
-- A held event shows a check mark before its name while the setting «Проведённые выставки» is "mark" (default, 5.10); with "hide" no mark is drawn and no width is reserved for it, in the preview and the PDF alike (held events are still printed). The font has no ✓ glyph, so the mark is a vector path (open polyline, round caps and joins, stroke 0.12 × name size, colour `#151515`): as tall as the name's cap height (0.7 × size), 0.9 × that wide, sitting on the first line's baseline, followed by one space of the name font. Its width is reserved on the first line when wrapping, so it always shares the line with the first word. In the vertical layouts it is rotated with the text; in fallback step 4 it is clipped with the name. The same path is drawn in the SVG and the PDF.
+- A held event shows a check mark before its name while the setting «Отмечать проведённые выставки знаком ✓» is on (`heldMark: 'show'`, default, 5.10); with `heldMark: 'none'` no mark is drawn and no width is reserved for it, in the preview and the PDF alike (held events are still printed). The font has no ✓ glyph, so the mark is a vector path (open polyline, round caps and joins, stroke 0.12 × name size, colour `#151515`): as tall as the name's cap height (0.7 × size), 0.9 × that wide, sitting on the first line's baseline, followed by one space of the name font. Its width is reserved on the first line when wrapping, so it always shares the line with the first word. In the vertical layouts it is rotated with the text; in fallback step 4 it is clipped with the name. The same path is drawn in the SVG and the PDF.
 - Logo (optional): centred below the name in the space left above the bottom row; height up to 2.2 × row height, aspect kept, only if at least 2.5 high is available.
 - Bottom row (segments of 2+ days): flag at the right edge (height min(3.4, 0.42 × row), width by the flag's aspect, max 2 × height, 0.08 grey border); city right-aligned immediately left of the flag with a 1.0 gap, bold, 3.0 shrinking to 1.6.
 - One-day segment: name and flag share the row; city is omitted.
@@ -210,7 +210,7 @@ type Settings = {
   // v2 (M6), see 5.10
   selectionMode: 'click-shift' | 'drag';      // default 'click-shift'
   weekendTint: 'grey' | 'pink' | string;      // string = custom '#RRGGBB'; default 'grey'
-  heldInPdf: 'mark' | 'hide';                 // default 'mark'
+  heldMark: 'show' | 'none';                  // default 'show'
   startup: 'last' | 'current';                // default 'last'
   recentColors: string[];                     // '#RRGGBB', newest first, max 8, no duplicates
   // v3 (M7), see 5.11; empty lists = section not filtered
@@ -274,7 +274,7 @@ Rules: an exhibition or country in use by an event cannot be deleted (the app ex
 
 | Step | Milestone | Change |
 | --- | --- | --- |
-| v1 → v2 | M6 (1.2.0) | Adds the settings of 5.10: `selectionMode: 'click-shift'`, `weekendTint: 'pink'` (keeps the tint the v1.1 file was printed with; new data folders get `'grey'`), `heldInPdf: 'mark'`, `startup: 'last'`, `recentColors: []` |
+| v1 → v2 | M6 (1.2.0) | Adds the settings of 5.10: `selectionMode: 'click-shift'`, `weekendTint: 'pink'` (keeps the tint the v1.1 file was printed with; new data folders get `'grey'`), `heldMark: 'show'`, `startup: 'last'`, `recentColors: []` |
 | v2 → v3 | M7 (1.3.0) | Adds `directions: []`, `groups: []`, `directionId: null` and `groupIds: []` on every exhibition, `settings.layers` with empty lists |
 
 ### 4.6 One tab at a time
@@ -356,8 +356,8 @@ Buttons: "Сохранить" (Enter), "Отмена" (Esc); in edit mode also "
 
 - Grid of 40 swatches: 10 columns (hues) × 4 rows (tints, lightest at the top), exact hexes in Appendix C. Every cell has a Russian name as tooltip and accessible label (e.g. «Сиреневый, оттенок 2»). The grid is one radio group: arrow keys move between cells, Enter or Space picks.
 - «Последние цвета»: a row of up to 8 colours last saved with an event, an exhibition or as the custom weekend tint, newest first, no duplicates, stored in `settings.recentColors`. Hidden while empty.
-- «Другой цвет…» opens two sliders below the grid with a live swatch: hue 0–359° and lightness CIE L* 70–95 (step 1), at a fixed chroma C* 30 reduced as far as needed to stay inside sRGB. Every colour it gives is light enough for the black event text. The result is stored as `#RRGGBB`. There is no free hex input.
-- The current colour is shown selected if it is in the grid or the recent row; otherwise it opens the sliders at its nearest hue and lightness (lightness clamped to 70–95; picking a slider value replaces it). A stored colour darker than L* 45 (from v1.1 or an import) still shows the contrast warning of Appendix C.
+- «Другой цвет…» opens two sliders below the grid with a live swatch: hue 0–359° and lightness CIE L* 63–95 (step 1), at a fixed chroma C* 30 reduced as far as needed to stay inside sRGB. Every colour it gives is light enough for the black event text. The result is stored as `#RRGGBB`. There is no free hex input.
+- The current colour is shown selected if it is in the grid or the recent row; otherwise it opens the sliders at its nearest hue and lightness (lightness clamped to 63–95; picking a slider value replaces it). A stored colour darker than L* 45 (from v1.1 or an import) still shows the contrast warning of Appendix C.
 
 ### 5.5 Catalogue
 
@@ -402,10 +402,10 @@ A modal dialog «Настройки» opened from the toolbar. Every change appl
 | --- | --- | --- |
 | `selectionMode` | Выбор дней | «Щелчок и Shift+щелчок» (`click-shift`) · «Протягивание мышью» (`drag`), 5.3 |
 | `weekendTint` | Цвет выходных | «Серый» (`grey`, `#EFEFEF`) · «Розовый» (`pink`, `#FCE8F1`) · «Другой…» (custom, picked with the colour picker of 5.4; stored as `#RRGGBB`) |
-| `heldInPdf` | Проведённые выставки | «Отмечать ✓» (`mark`) · «Без отметки» (`hide`), 3.6 |
+| `heldMark` | «Отмечать проведённые выставки знаком ✓» (checkbox) | on (`show`) · off (`none`), 3.6 |
 | `startup` | При запуске открывать | «Последний год и формат» (`last`) · «Текущий год, формат «Год»» (`current`) |
 
-- `startup: 'current'`: on opening the data, the year is the current calendar year of the computer and the format is `year`. Year and format chosen later are still remembered in `lastYear` / `lastFormat`.
+- `startup: 'current'`: on opening the data, the year is the current calendar year of the computer and the format is `year`. The year is read from the clock in the app layer (store) and passed in; `domain/` and `layout/` never read the clock. Year and format chosen later are still remembered in `lastYear` / `lastFormat`.
 - New data folders get the defaults. A v1 file migrated to v2 gets `weekendTint: 'pink'` (4.5).
 
 ### 5.11 Layers (M7)
@@ -604,7 +604,7 @@ The app must never lose data, must print exactly what the preview shows, and mus
 - Layout invariants: no text shape inside a number zone; all shapes inside the page; same input gives identical output.
 - Schema validation and every migration with fixtures; seed data valid.
 - Store: each action and undo / redo of it.
-- M6: weekend fill per tint setting (and a labelled holiday still replacing it); no ✓ path and no reserved width with `heldInPdf: 'hide'`; every grid colour and every slider output a valid hex with L* ≥ 60 and ≥ 70 respectively; recent colours (order, no duplicates, max 8); the click-shift rules of 5.3 as a pure function; startup modes; migration v1 → v2 with a v1 fixture.
+- M6: weekend fill per tint setting (and a labelled holiday still replacing it); no ✓ path and no reserved width with `heldMark: 'none'`; every grid colour and every slider output a valid hex with L* ≥ 63; recent colours (order, no duplicates, max 8); the click-shift rules of 5.3 as a pure function; startup modes; migration v1 → v2 with a v1 fixture.
 - M7: layer matching (OR within, AND between sections, «Без направления», empty city); stale filter entries dropped; subtitle text, singular and plural labels, shrink and "…"; delete direction / group clears references in one step; migration v2 → v3 with a v2 fixture.
 - M8: file-name matching (case, whitespace, folders, extensions, ignored entries); report categories incl. duplicates and failures; apply is one undo step; nothing changes on cancel.
 
@@ -739,12 +739,12 @@ Each row also creates its catalogue exhibition (short name = name, defaults = th
 
 ## Appendix C — Palette
 
-**Colour grid (M6).** 10 hues × 4 tints; tint 1 is the lightest (top row of the picker). Cell names are «<hue>, оттенок N». Every cell has CIE L* ≥ 60 (lowest: Красный 4, L* 63).
+**Colour grid (M6).** 10 hues × 4 tints; tint 1 is the lightest (top row of the picker). Cell names are «<hue>, оттенок N». Every cell has CIE L* ≥ 63, the same lower limit as the custom colour (lowest: Красный 4, L* 63.2).
 
 | Hue (id) | Tint 1 | Tint 2 | Tint 3 | Tint 4 |
 | --- | --- | --- | --- | --- |
 | Серый (`grey`) | `#EFEFEF` | `#D2D2D2` | `#B8B8B8` | `#9C9C9C` |
-| Красный (`red`) | `#FADDD8` | `#F5BCB2` | `#EF9A8C` | `#E87866` |
+| Красный (`red`) | `#FADDD8` | `#F5BCB2` | `#EF9A8C` | `#E87967` |
 | Оранжевый (`orange`) | `#FCE8D2` | `#F8D2A6` | `#F4BA7A` | `#EFA152` |
 | Жёлтый (`yellow`) | `#FBF3D1` | `#F7E8A4` | `#F2DB76` | `#EBCB4A` |
 | Зелёный (`green`) | `#E6F4E3` | `#CDE8C8` | `#B0D9A9` | `#92C98A` |
@@ -769,7 +769,7 @@ Each row also creates its catalogue exhibition (short name = name, defaults = th
 | Оранжевый | `#F8D2A6` | Оранжевый 2 |
 | Бирюзовый | `#BFE6E0` | Бирюзовый 2 |
 
-**Custom colour (M6).** Hue 0–359°, lightness L* 70–95, chroma C* 30 in CIE LCh(ab) (D65), reduced until the colour fits in sRGB, then rounded to `#RRGGBB` (5.4).
+**Custom colour (M6).** Hue 0–359°, lightness L* 63–95, chroma C* 30 in CIE LCh(ab) (D65), reduced until the colour fits in sRGB, then rounded to `#RRGGBB`; if rounding takes it below L* 63, the lightest neighbouring hex is used, so the result is always ≥ 63 (5.4).
 
 Event text is always `#151515`; a stored colour darker than CIE lightness L* 45 (of 100) shows a contrast warning in the dialog. All grid colours and all custom colours are lighter than that; only colours from v1.1 files or imports can be darker.
 
