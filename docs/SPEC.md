@@ -1,6 +1,6 @@
-# Календарь выставок — Specification v1.1
+# Календарь выставок — Specification v1.2
 
-Nov 19, 2026 · @Aleks
+Nov 27, 2026 · @Aleks
 
 ## 1. Overview
 
@@ -19,6 +19,13 @@ The app replaces hand-editing a PDF: one secretary keeps the company's exhibitio
 - Edit holidays.
 - Export a print-ready vector PDF.
 - Safe local storage: autosave, backups, undo.
+
+**Added in v1.2** (milestones M6–M8, section 8)
+
+- Settings: how days are selected, weekend tint, the held mark, what opens on start (5.10).
+- A colour picker with a grid of light shades, recent colours and a light-only custom colour (5.4, Appendix C).
+- Directions and groups of exhibitions, and a layer filter for the preview, the PDF and the lists (5.11).
+- Importing many logos at once from a ZIP file (5.12).
 
 **Out of scope (v1.0)** — see Appendix E for the backlog.
 
@@ -51,13 +58,13 @@ All design questions are settled; the agent must not reopen them without asking.
 | 3 | Data location | A data folder the user picks; recommended inside a Google Drive / OneDrive synced folder for off-site backup |
 | 4 | Formats | Four: year (A3 landscape), H1 and H2 (A4 portrait), H2 + next year's H1 (A3 landscape) |
 | 5 | Holidays | Belarus by default; editable in the app; working Saturdays not marked |
-| 6 | Held events | Shown with a "✓" before the name in the calendar and the PDF; greyed in the list |
+| 6 | Held events | Shown with a "✓" before the name in the calendar and the PDF (can be turned off in the settings, 5.10); greyed in the list |
 | 7 | Three overlaps | Column split in three equal lanes, plus a warning in the app |
 | 8 | Space shortage | Fallback order defined in 3.6; the name and flag are never dropped |
 | 9 | Font | PT Sans Narrow (Regular, Bold), SIL OFL, Cyrillic. TTF files bundled |
 | 10 | Header | Year (or "2027–2028") at top left; "Обновлено: DD.MM.YYYY" small at top right |
 | 11 | "2026" marks in the reference | Not implemented (backlog) |
-| 12 | Colours | Fixed palette of 10 plus a custom colour picker. Colours have no fixed meaning |
+| 12 | Colours | Grid of 40 light shades (10 hues × 4 tints, Appendix C), a row of recent colours and a custom colour limited to light shades. Colours have no fixed meaning; stored as hex |
 | 13 | Data model | Exhibition catalogue + events, see 4.1 |
 | 14 | Copy to next year | Yes, for a single event |
 | 15 | Starting data | Pre-filled with the 2027 events of the reference PDF (Appendix A) |
@@ -70,6 +77,11 @@ All design questions are settled; the agent must not reopen them without asking.
 | 22 | Hosting | GitHub Pages from a public GitHub repo, deployed by GitHub Actions on every push to `main`. No custom domain |
 | 23 | Install / offline | Installable PWA, fully usable offline after the first visit; "new version available" prompt |
 | 24 | Versioning | Semantic version shown in the app; `CHANGELOG.md` kept by hand |
+| 25 | Settings | A «Настройки» dialog; settings are stored in the data file (`DataFile.settings`), not in the browser |
+| 26 | Selecting days | Default: click the first day, Shift+click the last. Press-and-drag remains as a setting (5.3) |
+| 27 | Directions and groups | One direction per exhibition, any number of user-managed groups; a layer filter by direction, group and city applies to the preview, the PDF and the lists (5.11) |
+| 28 | Logo import | Logos imported in bulk from a ZIP file, matched by file name to the exhibition name, applied only after a report is confirmed (5.12). ZIP reading uses `fflate` (MIT, ~8 KB) |
+| 29 | Schema versions | Each milestone that changes `DataFile` bumps `schemaVersion` with a migration and a fixture test: M6 → v2, M7 → v3 (4.5) |
 
 ## 3. Calendar layout
 
@@ -89,6 +101,7 @@ One layout engine computes the page as a list of shapes in millimetres; the on-s
 - Margin M = 8 on all sides.
 - Title: top left, bold, magenta `#E6007E`; 14 on A3, 11 on A4. Its cap tops sit on the top margin (baseline = M + 0.7 × title size). "Обновлено: DD.MM.YYYY" at top right, 3, grey `#777`, on the title's baseline, date = day of export.
 - Title block: the month header band starts 1.25 × title size below the top margin (A3: y = 25.5; A4: y = 21.75), matching the reference.
+- Filter subtitle (M7, only while a layer filter is active, 5.11): one line under the title, left-aligned on the title's x, regular, grey `#777`; 3 on A3, 2.6 on A4; baseline 1.4 × its size below the title's baseline (above the month header band on both papers). It shrinks in 0.1 steps down to 2 to fit the grid width, then is cut with "…". Text: one part per active section in the order Направления, Группы, Города; a part is the label, ": " and the values joined by ", "; parts are joined by " · ". The label is singular for one value (Направление, Группа, Город) and plural for several (Направления, Группы, Города), e.g. «Направление: Транспорт · Город: Минск». «Без направления» is shown as a value under its section.
 - `split` only: the small "Y+1" label is bold, magenta, 4, centred over the January column, baseline 1.2 above the month header band.
 - Month header band: height 8, fill `#2B2B2B`, month names in white bold capitals, centred; 4.6 on A3, 3.6 on A4.
 - Grid: one column per month (equal widths), 31 rows (equal heights) filling the rest of the page. Days that do not exist (e.g. 30 Feb) are empty cells.
@@ -99,7 +112,7 @@ One layout engine computes the page as a list of shapes in millimetres; the on-s
 
 - Day number at left (regular, 2.7) followed by the weekday abbreviation (Пн Вт Ср Чт Пт Сб Вс, regular, 1.5) with a 0.4 gap, both on one baseline, vertically centred, 1.3 from the left edge.
 - Saturdays, Sundays and holidays: number and weekday in magenta `#E6007E`; other days `#151515`.
-- Saturday and Sunday cells are filled with the weekend tint, pale pink `#FCE8F1`. The tint is drawn first, below the background year, holiday fills, event fills and grid lines. A labelled holiday fill replaces it (3.4); an event fill wins over it (3.5).
+- Saturday and Sunday cells are filled with the weekend tint chosen in the settings (5.10): grey `#EFEFEF` (default), pale pink `#FCE8F1`, or a custom light colour (`#RRGGBB`). There is no URL switch for it. The tint is drawn first, below the background year, holiday fills, event fills and grid lines. A labelled holiday fill replaces it (3.4); an event fill wins over it (3.5).
 - The **number zone** is the left 7.4 of each cell; event text never enters it.
 
 ### 3.4 Holidays
@@ -124,7 +137,7 @@ Text area of a segment: from the lane's left edge (lane 0: from the end of the n
 **Horizontal layout (preferred)**
 
 - Name: bold, right-aligned, top-aligned 0.6 below the segment top, word-wrapped, max 4 lines, line height 1.15 × size. Size: largest of 3.4 → 2.1 in 0.1 steps that fits. Manual line breaks from the short name (4.1) are respected.
-- A held event shows a check mark before its name. The font has no ✓ glyph, so the mark is a vector path (open polyline, round caps and joins, stroke 0.12 × name size, colour `#151515`): as tall as the name's cap height (0.7 × size), 0.9 × that wide, sitting on the first line's baseline, followed by one space of the name font. Its width is reserved on the first line when wrapping, so it always shares the line with the first word. In the vertical layouts it is rotated with the text; in fallback step 4 it is clipped with the name. The same path is drawn in the SVG and the PDF.
+- A held event shows a check mark before its name while the setting «Проведённые выставки» is "mark" (default, 5.10); with "hide" no mark is drawn and no width is reserved for it, in the preview and the PDF alike (held events are still printed). The font has no ✓ glyph, so the mark is a vector path (open polyline, round caps and joins, stroke 0.12 × name size, colour `#151515`): as tall as the name's cap height (0.7 × size), 0.9 × that wide, sitting on the first line's baseline, followed by one space of the name font. Its width is reserved on the first line when wrapping, so it always shares the line with the first word. In the vertical layouts it is rotated with the text; in fallback step 4 it is clipped with the name. The same path is drawn in the SVG and the PDF.
 - Logo (optional): centred below the name in the space left above the bottom row; height up to 2.2 × row height, aspect kept, only if at least 2.5 high is available.
 - Bottom row (segments of 2+ days): flag at the right edge (height min(3.4, 0.42 × row), width by the flag's aspect, max 2 × height, 0.08 grey border); city right-aligned immediately left of the flag with a 1.0 gap, bold, 3.0 shrinking to 1.6.
 - One-day segment: name and flag share the row; city is omitted.
@@ -163,6 +176,9 @@ type ImageData = {              // embedded image
 
 type Country = { id: Id; name: string; flag: ImageData | null };
 
+type Direction = { id: Id; name: string; order: number };   // v3 (M7); order: position in lists
+type Group = { id: Id; name: string };                       // v3 (M7)
+
 type Exhibition = {
   id: Id;
   name: string;                 // full name, e.g. 'Transport logistic'
@@ -171,6 +187,8 @@ type Exhibition = {
   defaultCity: string;
   defaultCountryId: Id | null;
   defaultColor: string;         // '#RRGGBB'
+  directionId: Id | null;       // v3 (M7): one direction or none
+  groupIds: Id[];               // v3 (M7): any number of groups, no duplicates
 };
 
 type Event = {
@@ -186,20 +204,35 @@ type Event = {
 
 type Holiday = { date: ISODate; label: string };   // label '' = number turns red only
 
+type Settings = {
+  lastYear: number;
+  lastFormat: 'year' | 'h1' | 'h2' | 'split';
+  // v2 (M6), see 5.10
+  selectionMode: 'click-shift' | 'drag';      // default 'click-shift'
+  weekendTint: 'grey' | 'pink' | string;      // string = custom '#RRGGBB'; default 'grey'
+  heldInPdf: 'mark' | 'hide';                 // default 'mark'
+  startup: 'last' | 'current';                // default 'last'
+  recentColors: string[];                     // '#RRGGBB', newest first, max 8, no duplicates
+  // v3 (M7), see 5.11; empty lists = section not filtered
+  layers: { directionIds: (Id | null)[]; groupIds: Id[]; cities: string[] };  // null = «Без направления»
+};
+
 type DataFile = {
   app: 'kalendar-vystavok';
-  schemaVersion: 1;
+  schemaVersion: 3;             // 1 up to v1.1, 2 from M6 (1.2.0), 3 from M7 (1.3.0)
   savedAt: string;              // ISO timestamp
   appVersion: string;           // semver of the app that saved it
   countries: Country[];
   exhibitions: Exhibition[];
   events: Event[];
   holidays: Holiday[];
-  settings: { lastYear: number; lastFormat: 'year' | 'h1' | 'h2' | 'split' };
+  directions: Direction[];      // v3 (M7)
+  groups: Group[];              // v3 (M7)
+  settings: Settings;
 };
 ```
 
-Rules: an exhibition or country in use by an event cannot be deleted (the app explains which events use it). Names are unique, case-insensitive. Images are resized on import: logos to max 600 × 300 px, flags to max 160 × 120 px; max 200 KB each.
+Rules: an exhibition or country in use by an event cannot be deleted (the app explains which events use it). A direction or group in use can be deleted after a confirmation that says how many exhibitions use it; the references are cleared (direction → none, group removed from `groupIds`) in the same undo step. Names are unique, case-insensitive, within each entity (exhibitions, countries, directions, groups). Images are resized on import: logos to max 600 × 300 px, flags to max 160 × 120 px; max 200 KB each.
 
 ### 4.2 Data folder
 
@@ -222,7 +255,7 @@ Rules: an exhibition or country in use by an event cannot be deleted (the app ex
 - Autosave after every change, debounced 800 ms; a status indicator shows "Сохранено" / "Сохранение…" / "Ошибка сохранения".
 - Atomic write: `createWritable()` writes to a temporary file that replaces the original only on `close()`; a crash never leaves a half-written file.
 - Before overwriting, the previous file is copied to `backups/` (at most one backup per 10 minutes of editing, plus one on every app start, made right after the file is loaded). Backup names use the local wall-clock time with milliseconds; an existing backup is never overwritten: if the name is taken, a counter is added (`_2`, `_3`, …).
-- Every save stamps `savedAt` and `appVersion`. Changing the year or format updates `settings` and is saved too (it is not an undo step).
+- Every save stamps `savedAt` and `appVersion`. Changing the year or format, a setting (5.10), the layer filter (5.11) or the recent colours updates `settings` and is saved too (it is not an undo step; undo and redo keep the current settings).
 - The status is "Сохранение…" while changes are waiting to be written. The app saves when the tab is hidden and warns before the tab closes with unsaved changes.
 - External change check: before each write, compare the file's `lastModified` with the value at last read. If it changed (e.g. a sync tool or another computer), stop autosave and ask: reload from disk, or overwrite.
 - On save failure: keep the data in memory, show a persistent error banner, retry on the next change, offer "Скачать резервную копию" (JSON download).
@@ -237,6 +270,12 @@ Rules: an exhibition or country in use by an event cannot be deleted (the app ex
 
 - `migrations/` holds one pure function per version step (`v1 → v2`, …). On load, steps run in order; the result is validated, a backup of the original is written, then saved.
 - Every schema change requires a migration and a unit test with a real old-version fixture.
+- Steps so far:
+
+| Step | Milestone | Change |
+| --- | --- | --- |
+| v1 → v2 | M6 (1.2.0) | Adds the settings of 5.10: `selectionMode: 'click-shift'`, `weekendTint: 'pink'` (keeps the tint the v1.1 file was printed with; new data folders get `'grey'`), `heldInPdf: 'mark'`, `startup: 'last'`, `recentColors: []` |
+| v2 → v3 | M7 (1.3.0) | Adds `directions: []`, `groups: []`, `directionId: null` and `groupIds: []` on every exhibition, `settings.layers` with empty lists |
 
 ### 4.6 One tab at a time
 
@@ -259,25 +298,45 @@ The main screen is the calendar itself: the secretary selects days with the mous
 | Unsupported | Browser without File System Access: says to open the app in Chrome or Edge |
 | Main | Toolbar, calendar preview, warnings panel, event list |
 | Event dialog | Add / edit one event |
-| Catalogue | Exhibitions and countries, tabs. A modal dialog opened by "Каталог" |
+| Catalogue | Exhibitions, countries, directions and groups (directions and groups from M7), tabs. A modal dialog opened by "Каталог" |
+| Settings | The settings of 5.10. A modal dialog opened by "Настройки" |
+| Layers | The layer filter of 5.11 (M7). A popover panel opened by "Слои" |
+| Logo import | The report of 5.12 (M8). A modal dialog opened from the Exhibitions tab |
 | Holidays | Holiday list for the selected year(s). A modal dialog opened by "Праздники" |
 | Data | Folder name, last save, backups list, export / import, change folder, app version. A modal dialog opened by "Данные" |
 
 ### 5.2 Main screen
 
-- **Toolbar:** year (number input with ‹ ›), format (4 options, 3.1), "+ Выставка", undo / redo, "Каталог", "Праздники", "Данные", save status, "Печать", "Скачать PDF" (primary).
+- **Toolbar:** year (number input with ‹ ›), format (4 options, 3.1), "Слои" (M7), "+ Выставка", undo / redo, "Каталог", "Праздники", "Настройки", "Данные", save status, "Печать", "Скачать PDF" (primary).
+- **Active filter (M7):** while a layer filter is active, the "Слои" button is highlighted (magenta outline) and a chip next to it shows the same text as the PDF subtitle (3.2) with a "×" that resets the filter ("Показать все").
 - **Preview:** the page exactly as printed (3.x), scaled to the window width, minimum 900 px wide with horizontal scroll.
 - **Warnings panel:** listed only when present (5.7); clicking a warning opens that event.
-- **Event list:** exhibitions of the visible period sorted by start date: colour swatch, name, dates, city, country, held state. Click opens the event dialog.
+- **Event list:** exhibitions of the visible period sorted by start date: colour swatch, name, dates, city, country, held state. Click opens the event dialog. With a layer filter, only matching events are listed.
 
 ### 5.3 Selecting days
 
-- Press on a day cell, drag to another day, release: the dialog opens for a new event with these dates. The range runs in date order and may cross month columns (31 Mar → 2 Apr).
+The selection mode is a setting (5.10). In both modes a range runs in date order and may cross month columns (31 Mar → 2 Apr), selecting over existing events is allowed (creates an overlap), and a click (press and release on one cell, no Shift) on an existing event opens it for editing.
+
+**Click, then Shift+click (`click-shift`, default)**
+
+- Click on an empty day: marks it as the first day. No dialog opens. The day is highlighted (magenta 18 % fill, magenta outline) and a tooltip next to it shows «Shift+щелчок — последний день».
+- Shift+click on a day while a first day is marked: the dialog opens for a new event from the first day to this day. Shift+click on the marked day itself gives a one-day event. Shift+click over an event counts as a day, not as an edit.
+- Shift+click while no first day is marked: marks that day as the first day.
+- Plain click on another empty day: moves the first day there.
+- Click on an existing event: opens it for editing and clears the mark.
+- Esc clears the mark. So does changing the year or format, or opening any dialog.
+
+**Press and drag (`drag`)**
+
+- Press on a day cell, drag to another day, release: the dialog opens for a new event with these dates.
 - While dragging, selected days are highlighted (magenta 18 % fill, magenta outline) and a tooltip shows the range ("31 марта – 2 апреля 2027").
-- Click (press and release on one cell) on an event: opens it for editing. Click on an empty day: new one-day event.
-- Selecting over existing events is allowed (creates an overlap).
-- Esc during a drag cancels it. Cursor: cell cursor over days, pointer over events.
-- Pointer events (mouse, pen, touch). Selection must stay correct after scrolling and resizing.
+- Click on an empty day: new one-day event.
+- Esc during a drag cancels it.
+
+**Both modes**
+
+- Cursor: cell cursor over days, pointer over events.
+- Pointer events (mouse, pen, touch). Selection must stay correct after scrolling and resizing. The highlight and the tooltip are never printed.
 
 ### 5.4 Event dialog
 
@@ -287,20 +346,31 @@ The main screen is the calendar itself: the secretary selects days with the mous
 | Start, end | Date inputs | Required; end ≥ start (swapped automatically) |
 | City | Text with suggestions from earlier events | Optional |
 | Country | Select with flag thumbnails | Optional |
-| Colour | 10 swatches + custom picker | Required, default from the exhibition |
+| Colour | Colour picker (below) | Required, default from the exhibition |
 | Held | Checkbox "Выставка проведена" |  |
 | Note | Text area | Internal, not printed |
 
 Buttons: "Сохранить" (Enter), "Отмена" (Esc); in edit mode also "Удалить" and "Копировать на следующий год" (same weekdays a year later, i.e. +364 days, shown for confirmation and editable; every field is copied except "held", which starts unchecked). Delete needs no confirmation dialog because it can be undone; a toast "Удалено. Отменить" appears for 8 s and disappears earlier on the next data change, so it always undoes the delete.
 
+**Colour picker** (event dialog, exhibition form, custom weekend tint), in the style of the Word colour menu:
+
+- Grid of 40 swatches: 10 columns (hues) × 4 rows (tints, lightest at the top), exact hexes in Appendix C. Every cell has a Russian name as tooltip and accessible label (e.g. «Сиреневый, оттенок 2»). The grid is one radio group: arrow keys move between cells, Enter or Space picks.
+- «Последние цвета»: a row of up to 8 colours last saved with an event, an exhibition or as the custom weekend tint, newest first, no duplicates, stored in `settings.recentColors`. Hidden while empty.
+- «Другой цвет…» opens two sliders below the grid with a live swatch: hue 0–359° and lightness CIE L* 70–95 (step 1), at a fixed chroma C* 30 reduced as far as needed to stay inside sRGB. Every colour it gives is light enough for the black event text. The result is stored as `#RRGGBB`. There is no free hex input.
+- The current colour is shown selected if it is in the grid or the recent row; otherwise it opens the sliders at its nearest hue and lightness (lightness clamped to 70–95; picking a slider value replaces it). A stored colour darker than L* 45 (from v1.1 or an import) still shows the contrast warning of Appendix C.
+
 ### 5.5 Catalogue
 
 - **Exhibitions tab:** list with logo thumbnail, name, short name, defaults, number of events. Add / edit / delete. Short name is a 4-line text area with a live preview of how it wraps in a 3-day cell.
+- **Exhibitions tab (M7):** the form also has «Направление» (select: «Без направления» + the directions in order) and «Группы» (checkboxes, one per group; «Нет групп — добавьте на вкладке «Группы»» when none exist). The list shows the direction and the groups. Creating an exhibition from the event dialog gives it no direction and no groups.
+- **Exhibitions tab (M8):** button «Импорт логотипов (ZIP)» (5.12).
 - **Countries tab:** list with flag, name. Add / edit (upload a PNG, JPG or SVG flag) / delete. 30 countries preloaded (Appendix A).
+- **Directions tab (M7):** list in `order` with name and number of exhibitions. Add, rename, move up / down (buttons, keyboard reachable), delete (with the confirmation of 4.1 when in use). New directions go to the end. None preloaded.
+- **Groups tab (M7):** list sorted by name with the number of exhibitions. Add, rename, delete (with the confirmation of 4.1 when in use). None preloaded.
 
 ### 5.6 Undo and redo
 
-- Every data change (event, exhibition, country, holiday, import, backup restore) is one undoable step; the last 20 are kept in memory for the session. Creating an exhibition from the event dialog together with its event is one step. Year and format changes are not undo steps (4.3).
+- Every data change (event, exhibition, country, direction, group, holiday, logo import, import, backup restore) is one undoable step; the last 20 are kept in memory for the session. Creating an exhibition from the event dialog together with its event is one step. Year and format changes are not undo steps (4.3).
 - Ctrl+Z / Ctrl+Y (Ctrl+Shift+Z) and toolbar buttons. Undo is saved like any other change. The shortcuts are ignored inside text fields (they keep their own text undo) and while a dialog is open.
 
 ### 5.7 Warnings
@@ -312,7 +382,7 @@ Buttons: "Сохранить" (Enter), "Отмена" (Esc); in edit mode also "
 | «Нет флага» | The event's country has no flag |
 | «Нет праздников на год» | No holiday defined in a visible year |
 
-Warnings never block printing.
+Warnings never block printing. With a layer filter (5.11), the event warnings are computed for the matching events only (the layout of the filtered page); «Нет праздников на год» is not affected by the filter.
 
 ### 5.8 Holidays
 
@@ -323,6 +393,48 @@ Warnings never block printing.
 
 - When a new app version is deployed, a banner offers "Доступна новая версия — Обновить"; it never reloads on its own while a dialog is open.
 - All controls reachable by keyboard; visible focus; dialogs trap focus and return it; contrast AA for UI text.
+
+### 5.10 Settings (M6)
+
+A modal dialog «Настройки» opened from the toolbar. Every change applies at once (preview included) and is saved with the data (4.3); it is not an undo step. Import and backup restore bring the settings of the loaded file. The dialog closes with «Закрыть» or Esc.
+
+| Setting | Label | Options (default first) |
+| --- | --- | --- |
+| `selectionMode` | Выбор дней | «Щелчок и Shift+щелчок» (`click-shift`) · «Протягивание мышью» (`drag`), 5.3 |
+| `weekendTint` | Цвет выходных | «Серый» (`grey`, `#EFEFEF`) · «Розовый» (`pink`, `#FCE8F1`) · «Другой…» (custom, picked with the colour picker of 5.4; stored as `#RRGGBB`) |
+| `heldInPdf` | Проведённые выставки | «Отмечать ✓» (`mark`) · «Без отметки» (`hide`), 3.6 |
+| `startup` | При запуске открывать | «Последний год и формат» (`last`) · «Текущий год, формат «Год»» (`current`) |
+
+- `startup: 'current'`: on opening the data, the year is the current calendar year of the computer and the format is `year`. Year and format chosen later are still remembered in `lastYear` / `lastFormat`.
+- New data folders get the defaults. A v1 file migrated to v2 gets `weekendTint: 'pink'` (4.5).
+
+### 5.11 Layers (M7)
+
+A panel «Слои» opened from the toolbar (a popover, closed by Esc or a click outside) filters what is shown and printed.
+
+- Three sections of checkboxes: **Направления** (all directions in order, then «Без направления»), **Группы** (all groups by name), **Города** (the distinct cities of all events in the data, trimmed, compared case-insensitively, shown with the spelling of the earliest event, sorted alphabetically; events with an empty city never match a city filter). A section with no entries is shown with a short hint instead.
+- Matching: an event matches a section when nothing is checked in it, or when it matches any checked entry (OR): its exhibition's direction (or no direction for «Без направления»), any of its exhibition's groups, its city. An event is shown when it matches every section (AND).
+- «Показать все» unchecks everything.
+- The filter is stored in `settings.layers` and restored on the next start. Entries that no longer exist (deleted direction or group, city no longer used) are dropped from it silently.
+- The filter applies to the preview, the PDF (with the subtitle of 3.2), the event list (5.2) and the event warnings (5.7). Lanes are computed for the matching events only. The PDF file name does not change.
+- Holidays, weekends and the background year are never filtered.
+
+### 5.12 Logo import (M8)
+
+«Импорт логотипов (ZIP)» on the Exhibitions tab picks one `.zip` file (max 50 MB).
+
+- Files read: `.png` and `.svg` (case-insensitive extension) at any folder depth; `__MACOSX/` entries, names starting with "." and all other file types are ignored (counted in the report as «пропущено»).
+- Matching: the file name without folder and extension is compared to each exhibition's full `name` after trimming, collapsing runs of whitespace to one space and lower-casing with `toLocaleLowerCase('ru')`. The short name is not used.
+- Each matched image is resized and checked as in 4.1 (max 600 × 300 px, max 200 KB).
+- Before anything changes, a report dialog lists:
+  - «Будут добавлены» — matched exhibitions that have no logo yet;
+  - «Заменят текущий логотип» — matched exhibitions that already have one (old and new thumbnails side by side);
+  - «Не найдены выставки для файлов» — files without a matching exhibition;
+  - «Несколько файлов для одной выставки» — all such files are skipped;
+  - «Не удалось прочитать» — broken images or images over the limit after resizing;
+  - «Выставки без логотипа после импорта» — the exhibitions that will still have none.
+- «Применить» sets all listed logos in one undo step (5.6); «Отмена» changes nothing. If nothing matches, only «Закрыть» is offered.
+- A ZIP that cannot be read shows «Не удалось открыть архив» and changes nothing.
 
 ## 6. Architecture and tech stack
 
@@ -342,6 +454,7 @@ The UI changes data only through the store; the store saves only through the Sto
 | State | Zustand store with an undo history (20 steps) |
 | Validation | zod schemas for the data file |
 | PDF | jsPDF |
+| ZIP reading (M8) | fflate (MIT, small, no dependencies), for the logo import (5.12) |
 | PWA | vite-plugin-pwa, `registerType: 'prompt'` |
 | Styling | CSS Modules, design tokens as CSS variables |
 | Unit tests | Vitest |
@@ -391,7 +504,8 @@ kalendar-vystavok/
       store.ts              Zustand store, actions, undo history
       autosave.ts
     ui/
-      toolbar/, calendar/, dialogs/, catalogue/, holidays/, data/, common/
+      toolbar/, calendar/, dialogs/, catalogue/, holidays/, data/, common/,
+      settings/ (M6), layers/ (M7)
     i18n/ru.ts              all UI strings
   tests/
     unit/                   mirrors src/domain, src/layout, src/storage
@@ -426,6 +540,9 @@ type LayoutResult = {
 function layoutCalendar(input: {
   data: DataFile; year: number; format: FormatId; exportDate: ISODate; measurer: TextMeasurer;
 }): LayoutResult;
+
+// The layout reads the weekend tint, the held mark (M6) and the layer filter (M7) from
+// data.settings, so the preview and the PDF always follow the same settings.
 
 interface TextMeasurer { width(text: string, size: number, bold: boolean): number }
 // production: canvas measureText with the loaded font; tests: fontkit-based measurer on the same TTF
@@ -487,6 +604,9 @@ The app must never lose data, must print exactly what the preview shows, and mus
 - Layout invariants: no text shape inside a number zone; all shapes inside the page; same input gives identical output.
 - Schema validation and every migration with fixtures; seed data valid.
 - Store: each action and undo / redo of it.
+- M6: weekend fill per tint setting (and a labelled holiday still replacing it); no ✓ path and no reserved width with `heldInPdf: 'hide'`; every grid colour and every slider output a valid hex with L* ≥ 60 and ≥ 70 respectively; recent colours (order, no duplicates, max 8); the click-shift rules of 5.3 as a pure function; startup modes; migration v1 → v2 with a v1 fixture.
+- M7: layer matching (OR within, AND between sections, «Без направления», empty city); stale filter entries dropped; subtitle text, singular and plural labels, shrink and "…"; delete direction / group clears references in one step; migration v2 → v3 with a v2 fixture.
+- M8: file-name matching (case, whitespace, folders, extensions, ignored entries); report categories incl. duplicates and failures; apply is one undo step; nothing changes on cancel.
 
 **End-to-end tests (Playwright)** against the production build, with `memoryStorage` injected through a test flag (`window.__KALENDAR_TEST__ = { storage: 'memory' }`, set by an init script; not reachable from a URL). Storage flows run on the real File System Access adapter with `showDirectoryPicker` stubbed to return a folder of the origin private file system:
 
@@ -500,6 +620,9 @@ The app must never lose data, must print exactly what the preview shows, and mus
 - Second tab shows the read-only message.
 - Data folder: create, autosave, resume after reload; existing data never overwritten; invalid file → restore backup; external change → reload / overwrite; export and import; unsupported browser; seed loaded only on create.
 - Offline: after the first load, reload with network off still works (written with the PWA in M5).
+- M6: create events with click and Shift+click (range, one day, moving the first day, Esc); the same flows with `drag` chosen in the settings; settings survive a reload; weekend tint and the hidden ✓ in the downloaded PDF; startup `current`; colour grid, recent row and sliders by mouse and keyboard.
+- M7: add directions and groups, assign them in the exhibition form, filter with «Слои»; the preview, list, warnings and PDF (subtitle text) follow the filter; the filter survives a reload; «Показать все».
+- M8: import a ZIP of logos, check the report, apply, undo in one step; cancel changes nothing.
 
 **Manual checks before each release:** print one A3 and one A4 page on the office printer; open the app on the secretary's PC.
 
@@ -507,7 +630,7 @@ The app must never lose data, must print exactly what the preview shows, and mus
 
 ## 8. Milestones
 
-The agent builds the app in six milestones, in order; each ends with a green CI run, a deployed build and a short demo note in `CHANGELOG.md`. The agent stops after each milestone for review.
+The agent builds the app in nine milestones, in order (M0–M5 up to 1.0, M6–M8 for the v1.2 additions); each ends with a green CI run, a deployed build and a short demo note in `CHANGELOG.md`. The agent stops after each milestone for review.
 
 ### M0 — Project skeleton
 
@@ -546,6 +669,31 @@ The agent builds the app in six milestones, in order; each ends with a green CI 
 - [ ] Accessibility and performance checks of 7.1 pass.
 - [ ] `docs/USER_GUIDE.ru.md`: install, first run, add / edit / print, backups.
 - [ ] Version 1.0.0 tagged and deployed; secretary's PC set up and a real calendar printed.
+
+### M6 — Settings and colours (1.2.0)
+
+- [ ] Schema v2 with the settings of 5.10; migration v1 → v2 (`weekendTint: 'pink'`) with a fixture test; new data folders get the defaults.
+- [ ] «Настройки» dialog (5.10): selection mode, weekend tint (grey, pink, custom), held mark, startup; changes apply at once, are saved and are not undo steps.
+- [ ] Day selection with click and Shift+click (5.3) as default; press and drag still available.
+- [ ] Colour picker (5.4, Appendix C): 40-colour grid, recent colours, light-only sliders; used in the event dialog, the exhibition form and the settings.
+- [ ] Unit and e2e tests of 7.2 for M6; `docs/USER_GUIDE.ru.md` updated (selecting days, settings).
+- [ ] Version 1.2.0 tagged and deployed; the secretary's existing file opens migrated and prints as before.
+
+### M7 — Directions, groups and layers (1.3.0)
+
+- [ ] Schema v3 (4.1): directions, groups, `directionId`, `groupIds`, `settings.layers`; migration v2 → v3 with a fixture test.
+- [ ] Catalogue tabs «Направления» and «Группы»; direction and groups in the exhibition form (5.5); delete with confirmation clears references in one undo step.
+- [ ] «Слои» panel (5.11); the active filter shown in the toolbar (5.2) and remembered.
+- [ ] The filter applies to the preview, the PDF (subtitle, 3.2), the event list and the warnings.
+- [ ] Unit and e2e tests of 7.2 for M7; user guide updated.
+- [ ] Version 1.3.0 tagged and deployed; a filtered A3 and A4 page printed and approved by Aleks.
+
+### M8 — Logo import (1.4.0)
+
+- [ ] «Импорт логотипов (ZIP)» (5.12) with `fflate`; matching, resizing and the report before applying.
+- [ ] Apply is one undo step; cancel changes nothing; unreadable archives handled.
+- [ ] Unit and e2e tests of 7.2 for M8; user guide updated.
+- [ ] Version 1.4.0 tagged and deployed; tested with a real ZIP of the company's logos.
 
 ### Definition of done (every milestone)
 
@@ -591,20 +739,39 @@ Each row also creates its catalogue exhibition (short name = name, defaults = th
 
 ## Appendix C — Palette
 
-| Name | Hex |
-| --- | --- |
-| Сиреневый | `#B3A7E0` |
-| Светло-сиреневый | `#E4DFF6` |
-| Голубой | `#CFE8F5` |
-| Серый | `#D2D2D2` |
-| Тёмно-серый | `#9C9C9C` |
-| Розовый | `#F6CBD6` |
-| Зелёный | `#CDE8C8` |
-| Жёлтый | `#F7E8A4` |
-| Оранжевый | `#F8D2A6` |
-| Бирюзовый | `#BFE6E0` |
+**Colour grid (M6).** 10 hues × 4 tints; tint 1 is the lightest (top row of the picker). Cell names are «<hue>, оттенок N». Every cell has CIE L* ≥ 60 (lowest: Красный 4, L* 63).
 
-Event text is always `#151515`; a custom colour darker than CIE lightness L* 45 (of 100) shows a contrast warning in the dialog. All palette colours are lighter than that.
+| Hue (id) | Tint 1 | Tint 2 | Tint 3 | Tint 4 |
+| --- | --- | --- | --- | --- |
+| Серый (`grey`) | `#EFEFEF` | `#D2D2D2` | `#B8B8B8` | `#9C9C9C` |
+| Красный (`red`) | `#FADDD8` | `#F5BCB2` | `#EF9A8C` | `#E87866` |
+| Оранжевый (`orange`) | `#FCE8D2` | `#F8D2A6` | `#F4BA7A` | `#EFA152` |
+| Жёлтый (`yellow`) | `#FBF3D1` | `#F7E8A4` | `#F2DB76` | `#EBCB4A` |
+| Зелёный (`green`) | `#E6F4E3` | `#CDE8C8` | `#B0D9A9` | `#92C98A` |
+| Бирюзовый (`turquoise`) | `#DFF2EF` | `#BFE6E0` | `#9ED8CF` | `#7BC9BD` |
+| Голубой (`blue`) | `#E7F4FA` | `#CFE8F5` | `#B2D8EE` | `#93C5E6` |
+| Сиреневый (`lilac`) | `#F1EEFB` | `#E4DFF6` | `#CCC3EB` | `#B3A7E0` |
+| Фиолетовый (`violet`) | `#F2E3F5` | `#E5C8EB` | `#D6ABDF` | `#C78ED3` |
+| Розовый (`pink`) | `#FBE5EB` | `#F6CBD6` | `#EFADBF` | `#E68FA8` |
+
+**Named colours of v1.1** (used by the seed data, Appendix A). All ten are cells of the grid, so existing data keeps its colours and they show as selected:
+
+| Name | Hex | Grid cell |
+| --- | --- | --- |
+| Сиреневый | `#B3A7E0` | Сиреневый 4 |
+| Светло-сиреневый | `#E4DFF6` | Сиреневый 2 |
+| Голубой | `#CFE8F5` | Голубой 2 |
+| Серый | `#D2D2D2` | Серый 2 |
+| Тёмно-серый | `#9C9C9C` | Серый 4 |
+| Розовый | `#F6CBD6` | Розовый 2 |
+| Зелёный | `#CDE8C8` | Зелёный 2 |
+| Жёлтый | `#F7E8A4` | Жёлтый 2 |
+| Оранжевый | `#F8D2A6` | Оранжевый 2 |
+| Бирюзовый | `#BFE6E0` | Бирюзовый 2 |
+
+**Custom colour (M6).** Hue 0–359°, lightness L* 70–95, chroma C* 30 in CIE LCh(ab) (D65), reduced until the colour fits in sRGB, then rounded to `#RRGGBB` (5.4).
+
+Event text is always `#151515`; a stored colour darker than CIE lightness L* 45 (of 100) shows a contrast warning in the dialog. All grid colours and all custom colours are lighter than that; only colours from v1.1 files or imports can be darker.
 
 ## Appendix D — CLAUDE.md for the coding agent
 
