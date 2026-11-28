@@ -8,6 +8,12 @@
   min-width: 0;
 }
 
+/* Rows at least 1.75rem apart: radio targets keep the 24 px spacing of WCAG 2.5.8 on every
+   platform's font metrics. */
+.fieldset > label {
+  min-height: 1.75rem;
+}
+
 .fieldset legend {
   margin-bottom: var(--space-1);
   padding: 0;
