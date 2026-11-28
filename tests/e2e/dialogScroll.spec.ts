@@ -2,7 +2,7 @@
 // position as it was, while focus still returns to the opener (SPEC 5.9).
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { ru } from '../../src/i18n/ru.ts';
-import { dayPoint, openWithSeed } from './helpers.ts';
+import { dayPoint, openWithSeed, setSelectionMode } from './helpers.ts';
 
 // Short enough that the page scrolls.
 test.use({ viewport: { width: 1280, height: 720 } });
@@ -61,6 +61,8 @@ for (const { button, testId, closeLabel } of toolbarDialogs) {
 
 test('closing an event opened from the calendar keeps the scroll position', async ({ page }) => {
   await openWithSeed(page);
+  // A single click on an empty day opens the dialog only in drag mode (SPEC 5.3).
+  await setSelectionMode(page, 'drag');
   await scrollTo(page, 0);
   const dialog = page.getByTestId('event-dialog');
   // ТрансРоссия and an empty day, both visible without scrolling.
@@ -96,6 +98,8 @@ test('closing an event opened from the event list keeps the scroll position', as
 
 test('a calendar click after using the event list keeps the scroll position', async ({ page }) => {
   await openWithSeed(page);
+  // A single click on an empty day opens the dialog only in drag mode (SPEC 5.3).
+  await setSelectionMode(page, 'drag');
   // Focus ends up on a button low on the page (the event list) ...
   const row = page.getByTestId('event-list').getByRole('button', { name: 'ТрансРоссия' });
   await row.scrollIntoViewIfNeeded();

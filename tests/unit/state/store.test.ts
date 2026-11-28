@@ -590,11 +590,14 @@ describe('settings (SPEC 5.10)', () => {
     expect(store.getState().data?.settings.recentColors).toEqual(['#F7E8A4', '#CDE8C8']);
   });
 
-  it('remembers a custom weekend tint, but not a named one', async () => {
+  it('remembers a colour on request, not on every preference change', async () => {
     await openWith();
     store.getState().updatePreferences({ weekendTint: '#E4DFF6' });
-    store.getState().updatePreferences({ weekendTint: 'grey' });
-    expect(store.getState().data?.settings.recentColors).toEqual(['#E4DFF6']);
+    store.getState().updatePreferences({ weekendTint: '#E5C8EB' });
+    expect(store.getState().data?.settings.recentColors).toEqual([]);
+    store.getState().rememberColor('#e5c8eb');
+    expect(store.getState().data?.settings.recentColors).toEqual(['#E5C8EB']);
+    expect(canUndo(store.getState())).toBe(false);
   });
 
   it('does not remember the colour of a refused edit', async () => {

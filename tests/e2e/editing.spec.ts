@@ -8,6 +8,8 @@ import {
   dayPoint,
   dragDays,
   openWithSeed,
+  setSelectionMode,
+  shiftClick,
   showPreview,
 } from './helpers.ts';
 
@@ -28,9 +30,89 @@ async function save(page: Page) {
   await expect(dialog(page)).toBeHidden();
 }
 
-test('creates an event by dragging 3 days', async ({ page }) => {
+test('creates an event with a click and Shift+click (default mode)', async ({ page }) => {
   const errors = collectErrors(page);
   await openWithSeed(page);
+  await showPreview(page);
+  const a = await dayPoint(page, '2027-08-12');
+  await page.mouse.click(a.x, a.y);
+  // The first click only marks the day and shows the hint.
+  await expect(dialog(page)).toBeHidden();
+  await expect(page.getByTestId('selection-highlight')).toHaveCount(1);
+  await expect(page.getByTestId('selection-tooltip')).toHaveText(ru.selection.shiftHint);
+  // Shift+click on an earlier day: the range runs in date order.
+  await shiftClick(page, await dayPoint(page, '2027-08-10'));
+  await expect(dialog(page).getByLabel(ru.eventDialog.start)).toHaveValue('2027-08-10');
+  await expect(dialog(page).getByLabel(ru.eventDialog.end)).toHaveValue('2027-08-12');
+  await expect(page.getByTestId('selection-highlight')).toHaveCount(0);
+  await pickExhibition(page, 'Transport log', 'Transport logistic');
+  await save(page);
+  await expect(list(page).getByRole('row', { name: /10–12 августа 2027/ })).toContainText(
+    'Transport logistic',
+  );
+  expect(errors).toEqual([]);
+});
+
+test('click and Shift+click: one day, moving the mark, across months, Esc', async ({ page }) => {
+  await openWithSeed(page);
+  await showPreview(page);
+  // Shift+click on the marked day itself: a one-day event.
+  const day = await dayPoint(page, '2027-09-07');
+  await page.mouse.click(day.x, day.y);
+  await shiftClick(page, day);
+  await expect(dialog(page).getByLabel(ru.eventDialog.start)).toHaveValue('2027-09-07');
+  await expect(dialog(page).getByLabel(ru.eventDialog.end)).toHaveValue('2027-09-07');
+  await page.keyboard.press('Escape');
+  await expect(dialog(page)).toBeHidden();
+
+  // A plain click elsewhere moves the mark; the range crosses a month boundary.
+  await page.mouse.click(day.x, day.y);
+  const moved = await dayPoint(page, '2027-07-30');
+  await page.mouse.click(moved.x, moved.y);
+  await expect(page.getByTestId('selection-highlight')).toHaveCount(1);
+  await shiftClick(page, await dayPoint(page, '2027-08-02'));
+  await expect(dialog(page).getByLabel(ru.eventDialog.start)).toHaveValue('2027-07-30');
+  await expect(dialog(page).getByLabel(ru.eventDialog.end)).toHaveValue('2027-08-02');
+  await page.keyboard.press('Escape');
+  await expect(dialog(page)).toBeHidden();
+
+  // Esc clears the mark; then a Shift+click only marks a new first day.
+  await page.mouse.click(day.x, day.y);
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('selection-highlight')).toHaveCount(0);
+  await shiftClick(page, day);
+  await expect(dialog(page)).toBeHidden();
+  await expect(page.getByTestId('selection-highlight')).toHaveCount(1);
+
+  // A click on an event opens it and clears the mark.
+  await clickDay(page, '2027-03-17');
+  await expect(dialog(page).getByRole('combobox', { name: ru.eventDialog.exhibition })).toHaveValue(
+    'ТрансРоссия',
+  );
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('selection-highlight')).toHaveCount(0);
+});
+
+test('a marked first day is cleared by a year change and by opening a dialog', async ({ page }) => {
+  await openWithSeed(page);
+  await showPreview(page);
+  const day = await dayPoint(page, '2027-09-07');
+  await page.mouse.click(day.x, day.y);
+  await expect(page.getByTestId('selection-highlight')).toHaveCount(1);
+  await page.getByRole('button', { name: ru.editing.holidays }).click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('selection-highlight')).toHaveCount(0);
+
+  await page.mouse.click(day.x, day.y);
+  await page.getByRole('button', { name: ru.toolbar.nextYear }).click();
+  await page.getByRole('button', { name: ru.toolbar.prevYear }).click();
+  await expect(page.getByTestId('selection-highlight')).toHaveCount(0);
+});
+
+test('drag mode: creates an event by dragging 3 days', async ({ page }) => {
+  const errors = collectErrors(page);
+  await openWithSeed(page);
+  await setSelectionMode(page, 'drag');
   await dragDays(page, '2027-08-10', '2027-08-12');
 
   await expect(dialog(page)).toBeVisible();
@@ -48,8 +130,11 @@ test('creates an event by dragging 3 days', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test('selects across a month boundary and creates a new exhibition', async ({ page }) => {
+test('drag mode: selects across a month boundary and creates a new exhibition', async ({
+  page,
+}) => {
   await openWithSeed(page);
+  await setSelectionMode(page, 'drag');
   await showPreview(page);
   const a = await dayPoint(page, '2027-07-30');
   const b = await dayPoint(page, '2027-08-02');
@@ -71,8 +156,9 @@ test('selects across a month boundary and creates a new exhibition', async ({ pa
   await expect(page.getByTestId('exhibition-table')).toContainText('Новая выставка');
 });
 
-test('Esc cancels a drag', async ({ page }) => {
+test('drag mode: Esc cancels a drag', async ({ page }) => {
   await openWithSeed(page);
+  await setSelectionMode(page, 'drag');
   await showPreview(page);
   const a = await dayPoint(page, '2027-09-10');
   const b = await dayPoint(page, '2027-09-12');
@@ -85,8 +171,9 @@ test('Esc cancels a drag', async ({ page }) => {
   await expect(dialog(page)).toBeHidden();
 });
 
-test('a click on an empty day starts a one-day event', async ({ page }) => {
+test('drag mode: a click on an empty day starts a one-day event', async ({ page }) => {
   await openWithSeed(page);
+  await setSelectionMode(page, 'drag');
   await clickDay(page, '2027-09-07');
   await expect(dialog(page).getByLabel(ru.eventDialog.start)).toHaveValue('2027-09-07');
   await expect(dialog(page).getByLabel(ru.eventDialog.end)).toHaveValue('2027-09-07');
@@ -180,8 +267,11 @@ test('"+ Выставка" asks for the exhibition before saving', async ({ page
 
 test('warns about three events on one day and opens one on click', async ({ page }) => {
   await openWithSeed(page);
+  await showPreview(page);
   for (let i = 0; i < 3; i++) {
-    await dragDays(page, '2027-09-20', '2027-09-21');
+    // Over an existing event a plain click opens it; Shift+click marks the first day (SPEC 5.3).
+    await shiftClick(page, await dayPoint(page, '2027-09-20'));
+    await shiftClick(page, await dayPoint(page, '2027-09-21'));
     await pickExhibition(page, 'TransLogistica Caspian', 'TransLogistica Caspian');
     await save(page);
   }

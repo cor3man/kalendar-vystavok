@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import { formatDateRange } from '../../domain/dateText.ts';
 import { normalizeRange } from '../../domain/editing.ts';
-import type { Id, ISODate } from '../../domain/types.ts';
+import type { Id, ISODate, SelectionMode } from '../../domain/types.ts';
+import { ru } from '../../i18n/ru.ts';
 import { eventAt, rangeRects } from '../../layout/hitTest.ts';
 import { dayAt } from '../../layout/layout.ts';
 import { COLORS } from '../../layout/pageSpec.ts';
 import type { LayoutResult } from '../../layout/shapes.ts';
 import styles from './CalendarPreview.module.css';
+import { clickShift } from './clickShift.ts';
 
 interface Drag {
   pointerId: number;
@@ -20,9 +22,17 @@ interface Drag {
   tip: { x: number; y: number };
 }
 
+/** The marked first day of the click-shift mode, with its tooltip position. */
+interface Mark {
+  day: ISODate;
+  tip: { x: number; y: number };
+}
+
 interface SelectionLayerProps {
   layout: LayoutResult;
+  /** False while read-only or while a dialog is open; also clears a marked first day. */
   enabled: boolean;
+  mode: SelectionMode;
   onCreate: (start: ISODate, end: ISODate) => void;
   onEdit: (eventId: Id) => void;
 }
@@ -32,14 +42,18 @@ const OUTLINE = 0.5;
 const TIP_OFFSET_PX = 14;
 
 /**
- * Transparent layer over the preview with the same viewBox (SPEC 5.3): press, drag and release
- * selects days; a click opens an event. Pointer positions are mapped to page millimetres with the
+ * Transparent layer over the preview with the same viewBox (SPEC 5.3). `click-shift`: a click
+ * marks the first day, Shift+click the last; `drag`: press, drag and release selects days. In both
+ * modes a click opens an event. Pointer positions are mapped to page millimetres with the
  * SVG's current screen matrix, so selection stays correct after scrolling and resizing.
  * The highlight is UI only and never part of the LayoutResult, so it is never printed.
  */
-export function SelectionLayer({ layout, enabled, onCreate, onEdit }: SelectionLayerProps) {
+export function SelectionLayer({ layout, enabled, mode, onCreate, onEdit }: SelectionLayerProps) {
   const ref = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
+  const [mark, setMark] = useState<Mark | null>(null);
+  // A dialog opening (or read-only, or the drag mode) clears the mark (SPEC 5.3).
+  if (mark !== null && (!enabled || mode !== 'click-shift')) setMark(null);
   const [cursor, setCursor] = useState<'cell' | 'pointer' | 'default'>('default');
   const { page, grid, hits } = layout;
 
@@ -52,19 +66,21 @@ export function SelectionLayer({ layout, enabled, onCreate, onEdit }: SelectionL
     return { x: p.x, y: p.y, tip: { x: e.clientX - box.left, y: e.clientY - box.top } };
   }
 
+  const active = drag !== null || mark !== null;
   useEffect(() => {
-    if (drag === null) return;
+    if (!active) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
         setDrag(null);
+        setMark(null);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => {
       window.removeEventListener('keydown', onKey);
     };
-  }, [drag]);
+  }, [active]);
 
   function onPointerDown(e: PointerEvent<SVGSVGElement>) {
     if (!enabled || e.button !== 0) return;
@@ -76,6 +92,17 @@ export function SelectionLayer({ layout, enabled, onCreate, onEdit }: SelectionL
     // dialog opened from here does not hand the focus back to that element when it closes.
     e.preventDefault();
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    if (mode === 'click-shift') {
+      const result = clickShift(mark?.day ?? null, {
+        day,
+        eventId: eventAt(hits, p.x, p.y),
+        shift: e.shiftKey,
+      });
+      setMark(result.start === null ? null : { day: result.start, tip: p.tip });
+      if (result.action.kind === 'create') onCreate(result.action.start, result.action.end);
+      if (result.action.kind === 'edit') onEdit(result.action.eventId);
+      return;
+    }
     e.currentTarget.setPointerCapture(e.pointerId);
     setDrag({
       pointerId: e.pointerId,
@@ -116,8 +143,9 @@ export function SelectionLayer({ layout, enabled, onCreate, onEdit }: SelectionL
     onCreate(start, end);
   }
 
-  const range = drag === null ? null : normalizeRange(drag.anchor, drag.current);
-  const showRange = drag !== null && (drag.moved || drag.eventId === null);
+  const dragRange = drag === null ? null : normalizeRange(drag.anchor, drag.current);
+  const showDrag = drag !== null && (drag.moved || drag.eventId === null);
+  const range = showDrag ? dragRange : mark === null ? null : { start: mark.day, end: mark.day };
 
   return (
     <>
@@ -135,8 +163,7 @@ export function SelectionLayer({ layout, enabled, onCreate, onEdit }: SelectionL
           setDrag(null);
         }}
       >
-        {showRange &&
-          range !== null &&
+        {range !== null &&
           rangeRects(grid, range.start, range.end).map((r, i) => (
             <rect
               key={i}
@@ -152,14 +179,24 @@ export function SelectionLayer({ layout, enabled, onCreate, onEdit }: SelectionL
             />
           ))}
       </svg>
-      {showRange && range !== null && (
+      {showDrag && dragRange !== null && (
         <div
           className={styles.tooltip}
           role="status"
           data-testid="selection-tooltip"
           style={{ left: drag.tip.x + TIP_OFFSET_PX, top: drag.tip.y + TIP_OFFSET_PX }}
         >
-          {formatDateRange(range.start, range.end)}
+          {formatDateRange(dragRange.start, dragRange.end)}
+        </div>
+      )}
+      {mark !== null && !showDrag && (
+        <div
+          className={styles.tooltip}
+          role="status"
+          data-testid="selection-tooltip"
+          style={{ left: mark.tip.x + TIP_OFFSET_PX, top: mark.tip.y + TIP_OFFSET_PX }}
+        >
+          {ru.selection.shiftHint}
         </div>
       )}
     </>

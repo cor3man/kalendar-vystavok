@@ -74,6 +74,18 @@ test('catalogue: both tabs and the exhibition form', async ({ page }) => {
   await expectNoViolations(page);
 });
 
+test('settings dialog with the custom colour picker open', async ({ page }) => {
+  await openWithSeed(page);
+  await page.getByRole('button', { name: ru.settings.open }).click();
+  const dialog = page.getByTestId('settings-dialog');
+  await expect(dialog).toBeVisible();
+  await expectNoViolations(page);
+  await dialog.getByRole('radio', { name: ru.settings.tintCustom }).check();
+  await dialog.getByRole('button', { name: ru.colorPicker.more }).click();
+  await expect(dialog.getByTestId('custom-color')).toBeVisible();
+  await expectNoViolations(page);
+});
+
 test('holidays and data dialogs', async ({ page }) => {
   await openWithSeed(page);
   await page.getByRole('button', { name: ru.editing.holidays }).click();

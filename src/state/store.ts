@@ -104,6 +104,11 @@ export interface CalendarState {
   setFormat: (format: FormatId) => void;
   /** Settings dialog (SPEC 5.10): saved, never an undo step; ignored while read-only. */
   updatePreferences: (patch: Partial<Preferences>) => void;
+  /**
+   * Puts a colour first in «Последние цвета» (SPEC 5.4); not an undo step. Saving an event or an
+   * exhibition does this itself; the settings dialog calls it for a custom weekend tint on close.
+   */
+  rememberColor: (hex: string) => void;
   /** Parses a file picked for import (SPEC 4.7); nothing changes until `importData`. */
   readImportFile: (text: string) => ParseResult;
   /** Replaces the data after a backup of the current file. */
@@ -413,8 +418,10 @@ export function createCalendarStore(deps: StoreDeps): CalendarStore {
           (key) => patch[key] !== undefined && patch[key] !== current[key],
         );
         if (changed) updateSettings(patch);
-        const tint = patch.weekendTint;
-        if (tint !== undefined && tint !== 'grey' && tint !== 'pink') rememberColor(tint);
+      },
+
+      rememberColor(hex) {
+        if (isWritable(get())) rememberColor(hex);
       },
 
       readImportFile: (text) => parseDataFile(text),

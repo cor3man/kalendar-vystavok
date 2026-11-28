@@ -1,9 +1,12 @@
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import { isDarkColor, normalizeHex } from '../../domain/color.ts';
-import { PALETTE } from '../../domain/palette.ts';
+import { COLOR_HUES, GRID_CELLS, gridCellOf } from '../../domain/colorGrid.ts';
 import { ru } from '../../i18n/ru.ts';
+import { useCalendarStore } from '../../state/storeContext.ts';
 import form from '../common/form.module.css';
+import { CustomColorSliders } from './CustomColorSliders.tsx';
 import styles from './dialogs.module.css';
+import { SwatchGroup, type Swatch } from './SwatchGroup.tsx';
 
 interface ColorPickerProps {
   label: string;
@@ -11,44 +14,75 @@ interface ColorPickerProps {
   onChange: (hex: string) => void;
 }
 
-/** 10 palette swatches plus a custom colour (SPEC 5.4, Appendix C). */
+const EMPTY: readonly string[] = [];
+
+/** Name of a colour: its grid cell, or the hex for other colours. */
+function colorLabel(hex: string): string {
+  const cell = gridCellOf(hex);
+  return cell === null ? hex : ru.colorPicker.cell(ru.colorHues[cell.hue], cell.tint);
+}
+
+const GRID_SWATCHES: readonly Swatch[] = GRID_CELLS.map((c) => ({
+  hex: c.hex,
+  label: colorLabel(c.hex),
+}));
+
+/**
+ * Word-style colour picker (SPEC 5.4, Appendix C): 40 light shades, the recent colours and
+ * «Другой цвет…» with sliders limited to light colours.
+ */
 export function ColorPicker({ label, value, onChange }: ColorPickerProps) {
   const labelId = useId();
+  const recentId = useId();
+  const moreId = useId();
+  const recent = useCalendarStore((s) => s.data?.settings.recentColors ?? EMPTY);
   const current = normalizeHex(value) ?? value;
-  const inPalette = PALETTE.some((p) => p.hex === current);
-  const dark = !inPalette && normalizeHex(current) !== null && isDarkColor(current);
+  const known = gridCellOf(current) !== null || recent.includes(current);
+  // A colour that is neither in the grid nor recent opens the sliders at its position (5.4).
+  const [moreOpen, setMoreOpen] = useState(!known);
+  const dark = normalizeHex(current) !== null && isDarkColor(current);
+
   return (
     <div className={form.field}>
       <span id={labelId} className={form.label}>
         {label}
       </span>
-      <div className={styles.swatches} role="radiogroup" aria-labelledby={labelId}>
-        {PALETTE.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            role="radio"
-            aria-checked={p.hex === current}
-            aria-label={ru.palette[p.id]}
-            title={ru.palette[p.id]}
-            className={styles.swatchButton}
-            style={{ background: p.hex }}
-            onClick={() => {
-              onChange(p.hex);
-            }}
+      <SwatchGroup
+        swatches={GRID_SWATCHES}
+        columns={COLOR_HUES.length}
+        value={current}
+        onPick={onChange}
+        labelledBy={labelId}
+        testId="color-grid"
+      />
+      {recent.length > 0 && (
+        <>
+          <span id={recentId} className={form.label}>
+            {ru.colorPicker.recent}
+          </span>
+          <SwatchGroup
+            swatches={recent.map((hex) => ({ hex, label: colorLabel(hex) }))}
+            columns={recent.length}
+            value={current}
+            onPick={onChange}
+            labelledBy={recentId}
+            testId="color-recent"
           />
-        ))}
-        <label className={styles.customColor}>
-          <input
-            type="color"
-            value={current.toLowerCase()}
-            aria-label={ru.eventDialog.customColor}
-            onChange={(e) => {
-              onChange(e.currentTarget.value.toUpperCase());
-            }}
-          />
-          <span>{ru.eventDialog.customColor}</span>
-        </label>
+        </>
+      )}
+      <button
+        type="button"
+        className={styles.moreButton}
+        aria-expanded={moreOpen}
+        aria-controls={moreId}
+        onClick={() => {
+          setMoreOpen(!moreOpen);
+        }}
+      >
+        {ru.colorPicker.more}
+      </button>
+      <div id={moreId} hidden={!moreOpen}>
+        {moreOpen && <CustomColorSliders initial={current} onChange={onChange} />}
       </div>
       {dark && (
         <p className={form.warning} role="status">
