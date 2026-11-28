@@ -10,7 +10,7 @@ import {
 } from '../../../src/storage/backupPolicy.ts';
 import { summarizeData } from '../../../src/storage/importSummary.ts';
 import type { DataFile } from '../../../src/domain/types.ts';
-import fixture from '../../fixtures/v1-minimal.json' with { type: 'json' };
+import fixture from '../../fixtures/v2-minimal.json' with { type: 'json' };
 
 // Local time on purpose: backup names are the user's wall-clock time.
 const t = new Date(2027, 2, 14, 10, 22, 5, 42).getTime();

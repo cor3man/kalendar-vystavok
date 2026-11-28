@@ -95,6 +95,7 @@ test('every dialog opens and closes from the keyboard and returns focus', async 
   const dialogs = [
     { button: ru.editing.catalogue, testId: 'catalogue-dialog' },
     { button: ru.editing.holidays, testId: 'holidays-dialog' },
+    { button: ru.settings.open, testId: 'settings-dialog' },
     { button: ru.data.open, testId: 'data-dialog' },
   ];
   for (const { button, testId } of dialogs) {

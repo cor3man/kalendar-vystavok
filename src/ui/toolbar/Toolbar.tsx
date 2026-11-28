@@ -8,6 +8,7 @@ import { EditorButtons } from './EditorButtons.tsx';
 import { NewEventButton } from './NewEventButton.tsx';
 import { PdfActions } from './PdfActions.tsx';
 import { SaveStatus } from './SaveStatus.tsx';
+import { SettingsButton } from './SettingsButton.tsx';
 import styles from './Toolbar.module.css';
 import { UndoButtons } from './UndoButtons.tsx';
 
@@ -79,6 +80,7 @@ export function Toolbar() {
       <UndoButtons />
       <div className={styles.end}>
         <EditorButtons />
+        <SettingsButton />
         <DataButton />
         <SaveStatus />
         <PdfActions />

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildSeed } from '../../../src/storage/seed.ts';
 import { parseDataFile, serializeDataFile } from '../../../src/storage/schema.ts';
 import type { RawData } from '../../../src/storage/migrations/index.ts';
-import fixture from '../../fixtures/v1-minimal.json' with { type: 'json' };
+import fixture from '../../fixtures/v2-minimal.json' with { type: 'json' };
 
 const seed = buildSeed({
   currentYear: 2026,
@@ -31,7 +31,7 @@ function item(raw: RawData, key: string, i = 0): RawData {
 }
 
 describe('parseDataFile', () => {
-  it('accepts the v1 fixture unchanged', () => {
+  it('accepts the v2 fixture unchanged', () => {
     const r = parseDataFile(JSON.stringify(fixture));
     expect(r).toEqual({ kind: 'ok', data: fixture, migratedFrom: null });
   });
@@ -39,6 +39,13 @@ describe('parseDataFile', () => {
   it('accepts the seed data and round-trips through serializeDataFile', () => {
     const r = parseDataFile(serializeDataFile(seed));
     expect(r).toEqual({ kind: 'ok', data: seed, migratedFrom: null });
+  });
+
+  it('accepts a custom weekend tint', () => {
+    const r = parseDataFile(
+      withChange((raw) => ((raw.settings as RawData).weekendTint = '#E4DFF6')),
+    );
+    expect(r.kind === 'ok' && r.data.settings.weekendTint).toBe('#E4DFF6');
   });
 
   it('strips unknown fields', () => {
@@ -61,6 +68,36 @@ describe('parseDataFile', () => {
   });
 
   it.each([
+    [
+      'bad weekend tint',
+      (raw: RawData) => ((raw.settings as RawData).weekendTint = 'blue'),
+      'settings.weekendTint',
+    ],
+    [
+      'bad selection mode',
+      (raw: RawData) => ((raw.settings as RawData).selectionMode = 'tap'),
+      'settings.selectionMode',
+    ],
+    [
+      'bad held mark',
+      (raw: RawData) => ((raw.settings as RawData).heldMark = 'hide'),
+      'settings.heldMark',
+    ],
+    [
+      'bad startup',
+      (raw: RawData) => ((raw.settings as RawData).startup = 'never'),
+      'settings.startup',
+    ],
+    [
+      'too many recent colours',
+      (raw: RawData) => ((raw.settings as RawData).recentColors = Array<string>(9).fill('#EFEFEF')),
+      'settings.recentColors',
+    ],
+    [
+      'duplicate recent colours',
+      (raw: RawData) => ((raw.settings as RawData).recentColors = ['#efefef', '#EFEFEF']),
+      'settings.recentColors',
+    ],
     ['bad date', (raw: RawData) => (item(raw, 'events').start = '2027-02-30'), 'events.0.start'],
     [
       'end before start',
@@ -102,14 +139,14 @@ describe('parseDataFile', () => {
   });
 
   it('opens a newer version read-only when it still has the current shape', () => {
-    const r = parseDataFile(withChange((raw) => (raw.schemaVersion = 2)));
-    expect(r).toEqual({ kind: 'newer', data: fixture, version: 2 });
+    const r = parseDataFile(withChange((raw) => (raw.schemaVersion = 3)));
+    expect(r).toEqual({ kind: 'newer', data: fixture, version: 3 });
   });
 
   it('rejects a newer version that no longer has the current shape', () => {
     const r = parseDataFile(
       withChange((raw) => {
-        raw.schemaVersion = 3;
+        raw.schemaVersion = 4;
         delete raw.events;
       }),
     );
@@ -117,27 +154,27 @@ describe('parseDataFile', () => {
   });
 
   it('migrates an older version before validating it', () => {
-    // Pretend the app is at version 2, where events gained a field; the v1 fixture is "old".
+    // Pretend the app is at version 3, where events gained a field; the v2 fixture is "old".
     const r = parseDataFile(JSON.stringify(fixture), {
-      currentVersion: 2,
-      migrations: { 1: (raw) => ({ ...raw, schemaVersion: 2, migrated: true }) },
+      currentVersion: 3,
+      migrations: { 2: (raw) => ({ ...raw, schemaVersion: 3, migrated: true }) },
     });
     expect(r.kind).toBe('ok');
-    expect(r.kind === 'ok' && r.migratedFrom).toBe(1);
+    expect(r.kind === 'ok' && r.migratedFrom).toBe(2);
   });
 
   it('reports a failed migration as invalid', () => {
-    const r = parseDataFile(JSON.stringify(fixture), { currentVersion: 2, migrations: {} });
+    const r = parseDataFile(JSON.stringify(fixture), { currentVersion: 3, migrations: {} });
     expect(r).toEqual({
       kind: 'invalid',
-      issues: ['schemaVersion: MigrationError: No migration from version 1'],
+      issues: ['schemaVersion: MigrationError: No migration from version 2'],
     });
   });
 
   it('reports a migrated file that fails validation as invalid', () => {
     const r = parseDataFile(JSON.stringify(fixture), {
-      currentVersion: 2,
-      migrations: { 1: (raw) => ({ ...raw, schemaVersion: 2, events: null }) },
+      currentVersion: 3,
+      migrations: { 2: (raw) => ({ ...raw, schemaVersion: 3, events: null }) },
     });
     expect(r.kind).toBe('invalid');
   });

@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 import type { FormatId } from '../../src/domain/types.ts';
 import { ru } from '../../src/i18n/ru.ts';
 import { pageGeometry } from '../../src/layout/pageSpec.ts';
@@ -77,4 +77,42 @@ export async function clickDay(page: Page, iso: string, format: FormatId = 'year
   await showPreview(page);
   const p = await dayPoint(page, iso, format);
   await page.mouse.click(p.x, p.y);
+}
+
+/** Click on the first day, Shift+click on the last (SPEC 5.3, the default mode). */
+export async function selectDays(
+  page: Page,
+  from: string,
+  to: string,
+  format: FormatId = 'year',
+): Promise<void> {
+  await showPreview(page);
+  const a = await dayPoint(page, from, format);
+  const b = await dayPoint(page, to, format);
+  await page.mouse.click(a.x, a.y);
+  await shiftClick(page, b);
+}
+
+export async function shiftClick(page: Page, p: { x: number; y: number }): Promise<void> {
+  await page.keyboard.down('Shift');
+  await page.mouse.click(p.x, p.y);
+  await page.keyboard.up('Shift');
+}
+
+/** Opens «Настройки» (SPEC 5.10), runs `change` inside the dialog and closes it. */
+export async function changeSettings(
+  page: Page,
+  change: (dialog: Locator) => Promise<void>,
+): Promise<void> {
+  await page.getByRole('button', { name: ru.settings.open }).click();
+  const dialog = page.getByTestId('settings-dialog');
+  await expect(dialog).toBeVisible();
+  await change(dialog);
+  await dialog.getByRole('button', { name: ru.common.close }).click();
+  await expect(dialog).toBeHidden();
+}
+
+export async function setSelectionMode(page: Page, mode: 'drag' | 'click-shift'): Promise<void> {
+  const label = mode === 'drag' ? ru.settings.selectionDrag : ru.settings.selectionClickShift;
+  await changeSettings(page, (dialog) => dialog.getByRole('radio', { name: label }).check());
 }

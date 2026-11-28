@@ -3,7 +3,7 @@
 import { crc32, deflateSync } from 'node:zlib';
 import { expect, test, type Page } from '@playwright/test';
 import { ru } from '../../src/i18n/ru.ts';
-import { collectErrors, dragDays, openWithSeed } from './helpers.ts';
+import { collectErrors, openWithSeed, selectDays } from './helpers.ts';
 
 test.use({ viewport: { width: 1280, height: 1100 } });
 
@@ -87,7 +87,7 @@ test('adds a country with a flag and an exhibition with a logo, then uses them',
   await catalogue.getByRole('button', { name: ru.common.close }).click();
 
   const imagesBefore = await preview(page).locator('image').count();
-  await dragDays(page, '2027-09-01', '2027-09-06');
+  await selectDays(page, '2027-09-01', '2027-09-06');
   const dialog = page.getByTestId('event-dialog');
   await dialog.getByRole('combobox', { name: ru.eventDialog.exhibition }).fill('Expo');
   await page.getByRole('option', { name: 'Expo Test' }).click();

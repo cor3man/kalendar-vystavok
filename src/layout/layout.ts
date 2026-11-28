@@ -1,4 +1,5 @@
 // data + year + format → LayoutResult (SPEC 3, 6.3). Pure and deterministic.
+import { weekendFill } from '../domain/settings.ts';
 import { ru } from '../i18n/ru.ts';
 import { compareISO, daysInMonth, formatDMY, isValidISO, toISO, weekday } from '../domain/dates.ts';
 import { layoutSegments, segmentDays, type Segment } from '../domain/segments.ts';
@@ -110,13 +111,14 @@ export function layoutCalendar(input: LayoutInput): LayoutResult {
     return label !== undefined && label !== '' && !isCovered(column, day);
   };
 
-  // 0. Weekend tint, below everything (3.3). Covered cells keep it: lanes can leave part of a
-  // cell empty (3.5), and the event fill drawn later wins where it is.
+  // 0. Weekend tint from the settings, below everything (3.3). Covered cells keep it: lanes can
+  // leave part of a cell empty (3.5), and the event fill drawn later wins where it is.
+  const tint = weekendFill(data.settings.weekendTint);
   months.forEach(({ year: y, month }, column) => {
     for (let day = 1; day <= daysInMonth(y, month); day++) {
       const iso = toISO(y, month, day);
       if (weekday(iso) >= 5 && !hasHolidayFill(iso, column, day)) {
-        shapes.push({ kind: 'rect', ...cellRect(g, column, day), fill: COLORS.weekendFill });
+        shapes.push({ kind: 'rect', ...cellRect(g, column, day), fill: tint });
       }
     }
   });
@@ -207,7 +209,8 @@ export function layoutCalendar(input: LayoutInput): LayoutResult {
       {
         area: segmentTextArea(g, s),
         name: exhibition?.shortName ?? '',
-        held: event.held,
+        // With the held mark turned off (3.6), a held event is laid out like any other.
+        held: event.held && data.settings.heldMark === 'show',
         primary: s.isPrimary
           ? { city: event.city.trim(), flag: country?.flag ?? null, logo: exhibition?.logo ?? null }
           : null,

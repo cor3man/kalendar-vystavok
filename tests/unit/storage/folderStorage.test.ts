@@ -4,7 +4,7 @@ import { BACKUP_INTERVAL_MS, DATA_FILE_NAME } from '../../../src/storage/backupP
 import { DataFileError, ExternalChangeError, isAbortError } from '../../../src/storage/errors.ts';
 import { createMemoryStorage, type MemoryStorage } from '../../../src/storage/memoryStorage.ts';
 import { serializeDataFile } from '../../../src/storage/schema.ts';
-import fixture from '../../fixtures/v1-minimal.json' with { type: 'json' };
+import fixture from '../../fixtures/v2-minimal.json' with { type: 'json' };
 
 const base = fixture as DataFile;
 const START = new Date(2027, 2, 14, 10, 0, 0).getTime();
@@ -108,13 +108,13 @@ describe('load', () => {
     storage = createMemoryStorage({
       clock: { now: () => now },
       parseOptions: {
-        currentVersion: 2,
-        migrations: { 1: (raw) => ({ ...raw, schemaVersion: 2, appVersion: 'migrated' }) },
+        currentVersion: 3,
+        migrations: { 2: (raw) => ({ ...raw, schemaVersion: 3, appVersion: 'migrated' }) },
       },
     });
     const original = serializeDataFile(base);
     const result = await openExisting();
-    expect(result.migratedFrom).toBe(1);
+    expect(result.migratedFrom).toBe(2);
     const [backup] = backups();
     expect(storage.folder.files.get(backup ?? '')?.text).toBe(original);
     expect(storage.folder.files.get(DATA_FILE_NAME)?.text).not.toBe(original);

@@ -1,5 +1,5 @@
 import { isWritable } from '../../state/store.ts';
-import { useCalendarStore, useUiApi } from '../../state/storeContext.ts';
+import { useCalendarStore, useUiApi, useUpdate } from '../../state/storeContext.ts';
 import { CalendarPreview } from '../calendar/CalendarPreview.tsx';
 import { useLayout } from '../calendar/useLayout.ts';
 import { EventList } from './EventList.tsx';
@@ -10,6 +10,8 @@ export function MainScreen() {
   const layout = useLayout();
   const data = useCalendarStore((s) => s.data);
   const editable = useCalendarStore(isWritable);
+  const mode = useCalendarStore((s) => s.data?.settings.selectionMode ?? 'click-shift');
+  const dialogOpen = useUpdate((s) => s.openDialogs > 0);
   const ui = useUiApi();
   const openEvent = (id: string) => {
     ui.getState().openEvent({ kind: 'edit', id });
@@ -20,6 +22,8 @@ export function MainScreen() {
       <CalendarPreview
         layout={layout}
         editable={editable}
+        paused={dialogOpen}
+        mode={mode}
         onCreate={(start, end) => {
           ui.getState().openEvent({ kind: 'new', start, end });
         }}

@@ -1,8 +1,7 @@
-.swatches {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  align-items: center;
+.swatchGrid {
+  display: grid;
+  gap: 3px;
+  justify-content: start;
 }
 
 .swatchButton {
@@ -10,25 +9,55 @@
   height: 1.75rem;
   padding: 0;
   border: 1px solid rgb(0 0 0 / 25%);
-  border-radius: 4px;
+  border-radius: 3px;
   cursor: pointer;
 }
 
 .swatchButton[aria-checked='true'] {
   outline: 2px solid var(--color-text);
-  outline-offset: 2px;
+  outline-offset: 1px;
 }
 
 .swatchButton:focus-visible {
   outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.moreButton {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-accent);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.moreButton:focus-visible {
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 
-.customColor {
-  display: inline-flex;
-  gap: var(--space-1);
-  align-items: center;
-  font-size: var(--font-size-sm);
+/* «Другой цвет…»: two sliders and the resulting swatch. */
+.sliders {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: var(--space-3);
+  align-items: end;
+}
+
+.hueSlider {
+  accent-color: var(--color-accent);
+}
+
+.sliderPreview {
+  display: inline-block;
+  width: 2.5rem;
+  height: 1.75rem;
+  border: 1px solid rgb(0 0 0 / 25%);
+  border-radius: 3px;
 }
 
 /* Combobox and select-only listbox (WAI-ARIA patterns). */

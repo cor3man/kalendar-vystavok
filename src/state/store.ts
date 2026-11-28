@@ -19,6 +19,7 @@ import {
   type EventDraft,
   type ExhibitionDraft,
 } from '../domain/editing.ts';
+import { pushRecentColor, startView, type Preferences } from '../domain/settings.ts';
 import type { DataFile, FormatId, Holiday, Id, ISODate } from '../domain/types.ts';
 import { DataFileError, isAbortError } from '../storage/errors.ts';
 import type { Clock } from '../storage/folderStorage.ts';
@@ -101,6 +102,13 @@ export interface CalendarState {
   chooseOtherFolder: () => Promise<void>;
   setYear: (year: number) => void;
   setFormat: (format: FormatId) => void;
+  /** Settings dialog (SPEC 5.10): saved, never an undo step; ignored while read-only. */
+  updatePreferences: (patch: Partial<Preferences>) => void;
+  /**
+   * Puts a colour first in «Последние цвета» (SPEC 5.4); not an undo step. Saving an event or an
+   * exhibition does this itself; the settings dialog calls it for a custom weekend tint on close.
+   */
+  rememberColor: (hex: string) => void;
   /** Parses a file picked for import (SPEC 4.7); nothing changes until `importData`. */
   readImportFile: (text: string) => ParseResult;
   /** Replaces the data after a backup of the current file. */
@@ -182,13 +190,19 @@ export function createCalendarStore(deps: StoreDeps): CalendarStore {
       return { kind: 'start', remembered, notice };
     }
 
+    /** The calendar year of the injected clock; domain code gets it passed in (CLAUDE.md). */
+    function currentYear(): number {
+      return Number(todayISO(new Date(clock.now())).slice(0, 4));
+    }
+
     function enterReady(data: DataFile, readOnly: ReadOnlyReason | null, dirty: boolean) {
       const info = storage.info();
+      const view = startView(data.settings, currentYear());
       set({
         phase: { kind: 'ready' },
         data,
-        year: clampYear(data.settings.lastYear),
-        format: data.settings.lastFormat,
+        year: clampYear(view.year),
+        format: view.format,
         // Another tab keeps this one read-only for the whole session; a file's reason does not.
         readOnly: get().readOnly === 'otherTab' ? 'otherTab' : readOnly,
         folderName: info.folderName,
@@ -232,6 +246,14 @@ export function createCalendarStore(deps: StoreDeps): CalendarStore {
       const { data, revision } = get();
       if (data === null) return;
       set({ data: { ...data, settings: { ...data.settings, ...patch } }, revision: revision + 1 });
+    }
+
+    /** Puts a colour first in the recent row (SPEC 5.4); not an undo step. */
+    function rememberColor(hex: string) {
+      const recent = get().data?.settings.recentColors;
+      if (recent === undefined) return;
+      const next = pushRecentColor(recent, hex);
+      if (next.join() !== recent.join()) updateSettings({ recentColors: next });
     }
 
     /** Import and restore replace the data in one undoable step (SPEC 5.6). */
@@ -388,6 +410,20 @@ export function createCalendarStore(deps: StoreDeps): CalendarStore {
         if (get().data?.settings.lastFormat !== format) updateSettings({ lastFormat: format });
       },
 
+      updatePreferences(patch) {
+        const s = get();
+        if (!isWritable(s) || s.data === null) return;
+        const current = s.data.settings;
+        const changed = (Object.keys(patch) as (keyof Preferences)[]).some(
+          (key) => patch[key] !== undefined && patch[key] !== current[key],
+        );
+        if (changed) updateSettings(patch);
+      },
+
+      rememberColor(hex) {
+        if (isWritable(get())) rememberColor(hex);
+      },
+
       readImportFile: (text) => parseDataFile(text),
 
       async importData(data) {
@@ -473,6 +509,7 @@ export function createCalendarStore(deps: StoreDeps): CalendarStore {
         const result = saveEvent(data, eventId, eventDraft);
         if (!result.ok) return result;
         commit(before, result.data);
+        rememberColor(eventDraft.color);
         return { ok: true, id: eventId };
       },
 
@@ -480,7 +517,9 @@ export function createCalendarStore(deps: StoreDeps): CalendarStore {
 
       saveExhibition(id, draft) {
         const itemId = id ?? uniqueId(requireWritable());
-        return run((d) => saveExhibition(d, itemId, draft), itemId);
+        const outcome = run((d) => saveExhibition(d, itemId, draft), itemId);
+        if (outcome.ok) rememberColor(draft.defaultColor);
+        return outcome;
       },
 
       deleteExhibition: (id) => run((d) => deleteExhibition(d, id), id),

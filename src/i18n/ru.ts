@@ -56,17 +56,46 @@ export const ru = {
   },
 
   /** Palette colour names (SPEC Appendix C). */
-  palette: {
-    lilac: 'Сиреневый',
-    lightLilac: 'Светло-сиреневый',
-    lightBlue: 'Голубой',
+  /** Hues of the colour grid (SPEC 5.4, Appendix C). */
+  colorHues: {
     grey: 'Серый',
-    darkGrey: 'Тёмно-серый',
-    pink: 'Розовый',
-    green: 'Зелёный',
-    yellow: 'Жёлтый',
+    red: 'Красный',
     orange: 'Оранжевый',
+    yellow: 'Жёлтый',
+    green: 'Зелёный',
     turquoise: 'Бирюзовый',
+    blue: 'Голубой',
+    lilac: 'Сиреневый',
+    violet: 'Фиолетовый',
+    pink: 'Розовый',
+  },
+
+  /** SPEC 5.10. */
+  settings: {
+    open: 'Настройки',
+    title: 'Настройки',
+    selectionMode: 'Выбор дней',
+    selectionClickShift: 'Щелчок и Shift+щелчок',
+    selectionDrag: 'Протягивание мышью',
+    weekendTint: 'Цвет выходных',
+    tintGrey: 'Серый',
+    tintPink: 'Розовый',
+    tintCustom: 'Другой…',
+    customTint: 'Свой цвет выходных',
+    heldMark: 'Отмечать проведённые выставки знаком ✓',
+    startup: 'При запуске открывать',
+    startupLast: 'Последний год и формат',
+    startupCurrent: 'Текущий год, формат «Год»',
+  },
+
+  /** SPEC 5.4 colour picker. */
+  colorPicker: {
+    cell: (hue: string, tint: number) => `${hue}, оттенок ${String(tint)}`,
+    recent: 'Последние цвета',
+    more: 'Другой цвет…',
+    hue: 'Оттенок',
+    lightness: 'Светлота',
+    preview: 'Выбранный цвет',
   },
 
   formats: {
@@ -223,6 +252,9 @@ export const ru = {
   /** SPEC 5.3: selecting days on the preview. */
   selection: {
     hint: 'Выделите дни мышью, чтобы добавить выставку. Щёлкните по выставке, чтобы изменить её.',
+    hintClickShift:
+      'Щёлкните первый день, затем Shift+щелчок — последний, чтобы добавить выставку. Щёлкните по выставке, чтобы изменить её.',
+    shiftHint: 'Shift+щелчок — последний день',
   },
 
   /** SPEC 5.4. */
@@ -240,7 +272,6 @@ export const ru = {
     country: 'Страна',
     noCountry: 'Не указана',
     color: 'Цвет',
-    customColor: 'Свой цвет',
     darkColor: 'Цвет тёмный: чёрный текст на нём будет плохо виден при печати.',
     held: 'Выставка проведена',
     note: 'Заметка',

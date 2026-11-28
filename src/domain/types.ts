@@ -54,14 +54,31 @@ export interface Holiday {
 
 export type FormatId = 'year' | 'h1' | 'h2' | 'split';
 
+/** How a new event's days are picked on the calendar (SPEC 5.3). */
+export type SelectionMode = 'click-shift' | 'drag';
+/** Weekend cell fill (SPEC 3.3): a named tint or a custom '#RRGGBB'. */
+// The intersection keeps the two names visible in editor hints while allowing any string.
+export type WeekendTint = 'grey' | 'pink' | (string & Record<never, never>);
+/** Whether held events show the check mark (SPEC 3.6). */
+export type HeldMark = 'show' | 'none';
+/** Year and format on opening the data (SPEC 5.10). */
+export type StartupMode = 'last' | 'current';
+
+/** SPEC 4.1, 5.10. Not part of the undo history. */
 export interface Settings {
   lastYear: number;
   lastFormat: FormatId;
+  selectionMode: SelectionMode;
+  weekendTint: WeekendTint;
+  heldMark: HeldMark;
+  startup: StartupMode;
+  /** '#RRGGBB', newest first, max 8, no duplicates. */
+  recentColors: string[];
 }
 
 export interface DataFile {
   app: 'kalendar-vystavok';
-  schemaVersion: 1;
+  schemaVersion: 2;
   /** ISO timestamp. */
   savedAt: string;
   /** Semver of the app that saved it. */

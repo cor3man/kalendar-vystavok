@@ -27,7 +27,7 @@ async function openBigFolder(page: Page): Promise<void> {
   const data = buildBigData();
   const text = serializeDataFile({
     ...data,
-    settings: { lastYear: BIG_FIRST_YEAR, lastFormat: 'year' },
+    settings: { ...data.settings, lastYear: BIG_FIRST_YEAR, lastFormat: 'year' },
   });
   await page.evaluate(
     async ({ folder, text }) => {

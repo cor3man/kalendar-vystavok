@@ -11,7 +11,7 @@ import { DATA_FILE_NAME } from '../../../src/storage/backupPolicy.ts';
 import { createMemoryStorage, type MemoryStorage } from '../../../src/storage/memoryStorage.ts';
 import { parseDataFile, serializeDataFile } from '../../../src/storage/schema.ts';
 import type { StorageStatus } from '../../../src/storage/Storage.ts';
-import fixture from '../../fixtures/v1-minimal.json' with { type: 'json' };
+import fixture from '../../fixtures/v2-minimal.json' with { type: 'json' };
 
 const base = fixture as DataFile;
 const START = new Date(2027, 2, 14, 10, 0, 0).getTime();
@@ -327,7 +327,10 @@ describe('import, restore, export', () => {
   it('backs up the current file, then replaces the data', async () => {
     await openWith();
     vi.setSystemTime(START + 1000);
-    const imported = { ...base, settings: { lastYear: 2035, lastFormat: 'year' as const } };
+    const imported = {
+      ...base,
+      settings: { ...base.settings, lastYear: 2035, lastFormat: 'year' as const },
+    };
     const parsed = store.getState().readImportFile(serializeDataFile(imported));
     expect(parsed.kind).toBe('ok');
     await store.getState().importData(imported);
@@ -454,7 +457,16 @@ describe('editing and undo', () => {
     s().setFormat('split');
     const edited = s().data;
     for (let i = 0; i < 6; i++) s().undo();
-    expect(s().data).toEqual({ ...base, settings: { lastYear: 2030, lastFormat: 'split' } });
+    expect(s().data).toEqual({
+      ...base,
+      // Settings are not undo steps: the year, format and recent colours stay.
+      settings: {
+        ...base.settings,
+        lastYear: 2030,
+        lastFormat: 'split',
+        recentColors: ['#D2D2D2'],
+      },
+    });
     expect(canUndo(s())).toBe(false);
     s().undo();
     for (let i = 0; i < 6; i++) s().redo();
@@ -509,5 +521,88 @@ describe('editing and undo', () => {
     store.getState().deleteEvent('ev-a');
     await store.getState().changeFolder();
     expect(store.getState().history.past).toEqual([]);
+  });
+});
+
+describe('settings (SPEC 5.10)', () => {
+  const draft = {
+    exhibitionId: 'ex-a',
+    start: '2027-06-01',
+    end: '2027-06-03',
+    city: '',
+    countryId: null,
+    color: '#cde8c8',
+    held: false,
+    note: '',
+  };
+
+  it("'last' opens the remembered year and format", async () => {
+    await openWith();
+    expect(store.getState()).toMatchObject({ year: 2027, format: 'h1' });
+  });
+
+  it("'current' opens the clock's year in the year format and keeps the remembered values", async () => {
+    // START is in 2027; move the clock to 2031.
+    vi.setSystemTime(new Date(2031, 5, 1, 12).getTime());
+    await openWith({ ...base, settings: { ...base.settings, startup: 'current' } });
+    expect(store.getState()).toMatchObject({ year: 2031, format: 'year' });
+    expect(store.getState().data?.settings).toMatchObject({ lastYear: 2027, lastFormat: 'h1' });
+  });
+
+  it('saves a preference without an undo step', async () => {
+    await openWith();
+    store.getState().updatePreferences({ weekendTint: 'grey', selectionMode: 'drag' });
+    expect(store.getState().data?.settings).toMatchObject({
+      weekendTint: 'grey',
+      selectionMode: 'drag',
+    });
+    expect(canUndo(store.getState())).toBe(false);
+    expect(store.getState().editCount).toBe(0);
+    await vi.advanceTimersByTimeAsync(800);
+    expect(onDisk().settings).toMatchObject({ weekendTint: 'grey', selectionMode: 'drag' });
+  });
+
+  it('keeps preferences through undo and redo', async () => {
+    await openWith();
+    store.getState().deleteEvent('ev-a');
+    store.getState().updatePreferences({ heldMark: 'none' });
+    store.getState().undo();
+    expect(store.getState().data?.settings.heldMark).toBe('none');
+    store.getState().redo();
+    expect(store.getState().data?.settings.heldMark).toBe('none');
+  });
+
+  it('ignores preferences when read-only', async () => {
+    await openWith(base, { owner: false });
+    store.getState().updatePreferences({ heldMark: 'none' });
+    expect(store.getState().data?.settings.heldMark).toBe('show');
+  });
+
+  it('remembers the colours of saved events and exhibitions, newest first', async () => {
+    await openWith();
+    store.getState().saveEvent({ id: null, draft });
+    const exhibition = base.exhibitions[0];
+    if (exhibition === undefined) throw new Error('fixture has an exhibition');
+    store.getState().saveExhibition(exhibition.id, { ...exhibition, defaultColor: '#F7E8A4' });
+    expect(store.getState().data?.settings.recentColors).toEqual(['#F7E8A4', '#CDE8C8']);
+    // Not part of the undo step: undoing the exhibition edit keeps the list.
+    store.getState().undo();
+    expect(store.getState().data?.settings.recentColors).toEqual(['#F7E8A4', '#CDE8C8']);
+  });
+
+  it('remembers a colour on request, not on every preference change', async () => {
+    await openWith();
+    store.getState().updatePreferences({ weekendTint: '#E4DFF6' });
+    store.getState().updatePreferences({ weekendTint: '#E5C8EB' });
+    expect(store.getState().data?.settings.recentColors).toEqual([]);
+    store.getState().rememberColor('#e5c8eb');
+    expect(store.getState().data?.settings.recentColors).toEqual(['#E5C8EB']);
+    expect(canUndo(store.getState())).toBe(false);
+  });
+
+  it('does not remember the colour of a refused edit', async () => {
+    await openWith();
+    store.getState().saveEvent({ id: null, draft: { ...draft, exhibitionId: 'nope' } });
+    expect(store.getState().data?.settings.recentColors).toEqual([]);
   });
 });
