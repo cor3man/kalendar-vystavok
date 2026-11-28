@@ -48,6 +48,7 @@ export interface FitInput {
   area: Rect;
   /** Short name of the exhibition ('\n' = forced break). */
   name: string;
+  /** Draw the held mark before the name (held event and the mark turned on, 3.6). */
   held: boolean;
   /** City, flag and logo; only for the primary segment, null otherwise. */
   primary: PrimaryContent | null;

@@ -14,6 +14,7 @@ import { daysInMonth, toISO, weekday } from '../../../src/domain/dates.ts';
 import type { LayoutResult, Shape, TextShape } from '../../../src/layout/shapes.ts';
 import type { DataFile, Event, FormatId } from '../../../src/domain/types.ts';
 import { buildSeed } from '../../../src/storage/seed.ts';
+import { weekendFill } from '../../../src/domain/settings.ts';
 import { ru } from '../../../src/i18n/ru.ts';
 import { createFontkitMeasurer, glyphExtent } from '../helpers/fontkitMeasurer.ts';
 
@@ -23,6 +24,9 @@ const seed = buildSeed({
   appVersion: '0.2.0',
   savedAt: '2026-11-20T10:00:00.000Z',
 });
+
+/** Weekend fill of the seed's setting (grey for new data folders). */
+const TINT = weekendFill(seed.settings.weekendTint);
 
 function run(over: Partial<LayoutInput> = {}): LayoutResult {
   return layoutCalendar({
@@ -197,9 +201,7 @@ describe('layoutCalendar invariants', () => {
     expect(r.shapes[bg]).toMatchObject({ kind: 'text', text: '2027', align: 'right' });
     // Only weekend tint rects come before the background year.
     expect(bg).toBeGreaterThan(0);
-    expect(
-      r.shapes.slice(0, bg).every((s) => s.kind === 'rect' && s.fill === COLORS.weekendFill),
-    ).toBe(true);
+    expect(r.shapes.slice(0, bg).every((s) => s.kind === 'rect' && s.fill === TINT)).toBe(true);
     const bgWidth = measurer.width('2027', (r.shapes[bg] as TextShape).size, true);
     expect(bgWidth).toBeCloseTo(r.grid.colW * 4);
   });
@@ -338,16 +340,16 @@ describe('weekend tint (3.3)', () => {
 
   it.each(FORMAT_IDS)('%s: fills every Saturday and Sunday cell and nothing else', (format) => {
     const r = run({ format, data: bare });
-    const tinted = [...filledCells(r, COLORS.weekendFill).keys()].sort();
+    const tinted = [...filledCells(r, TINT).keys()].sort();
     expect(tinted).toEqual(weekendDays(format, 2027).sort());
   });
 
   it.each(FORMAT_IDS)('%s: tint is drawn before the background year and all fills', (format) => {
     const r = run({ format });
-    const tints = [...filledCells(r, COLORS.weekendFill).values()];
+    const tints = [...filledCells(r, TINT).values()];
     const bg = r.shapes.findIndex((s) => s.kind === 'text' && s.color === COLORS.backgroundYear);
     const otherRects = r.shapes
-      .map((s, i) => (s.kind === 'rect' && s.fill !== COLORS.weekendFill ? i : -1))
+      .map((s, i) => (s.kind === 'rect' && s.fill !== TINT ? i : -1))
       .filter((i) => i >= 0);
     expect(tints.length).toBeGreaterThan(0);
     expect(Math.max(...tints)).toBeLessThan(bg);
@@ -356,7 +358,7 @@ describe('weekend tint (3.3)', () => {
 
   it.each(FORMAT_IDS)('%s: a labelled holiday fill replaces the tint', (format) => {
     const r = run({ format });
-    const tinted = filledCells(r, COLORS.weekendFill);
+    const tinted = filledCells(r, TINT);
     const holidayFilled = filledCells(r, COLORS.holidayFill);
     for (const iso of weekendDays(format, 2027)) {
       // Each weekend cell has exactly one of the two fills.
@@ -366,7 +368,7 @@ describe('weekend tint (3.3)', () => {
 
   it('labelled weekend holidays get the holiday fill, unlabelled ones keep the tint', () => {
     const r = run();
-    const tinted = filledCells(r, COLORS.weekendFill);
+    const tinted = filledCells(r, TINT);
     const holidayFilled = filledCells(r, COLORS.holidayFill);
     // 2 May 2027: Easter, Sunday, labelled. 7 Nov 2027: Sunday, labelled.
     for (const iso of ['2027-05-02', '2027-11-07']) {
@@ -380,7 +382,7 @@ describe('weekend tint (3.3)', () => {
 
   it('event fills are drawn above the tint, also on a covered labelled holiday', () => {
     const r = run({ data: withEvents([event('e', '2027-05-01', '2027-05-03')]) });
-    const tinted = filledCells(r, COLORS.weekendFill);
+    const tinted = filledCells(r, TINT);
     const holidayFilled = filledCells(r, COLORS.holidayFill);
     const eventRect = r.shapes.findIndex((s) => s.kind === 'rect' && s.fill === '#B3A7E0');
     expect(holidayFilled.has('2027-05-02')).toBe(false);
@@ -389,8 +391,34 @@ describe('weekend tint (3.3)', () => {
     }
   });
 
-  it('is pale pink', () => {
-    expect(COLORS.weekendFill).toBe('#FCE8F1');
+  it('is grey for new data folders', () => {
+    expect(TINT).toBe('#EFEFEF');
+  });
+
+  it.each([
+    ['pink', '#FCE8F1'],
+    ['#E4DFF6', '#E4DFF6'],
+  ])('follows the setting %s, in the same cells', (tint, fill) => {
+    const data = { ...bare, settings: { ...bare.settings, weekendTint: tint } };
+    const r = run({ data });
+    expect([...filledCells(r, fill).keys()].sort()).toEqual(weekendDays('year', 2027).sort());
+    expect(filledCells(r, TINT).size).toBe(0);
+  });
+});
+
+describe('held mark setting (3.6)', () => {
+  it("'show' draws the check mark for held events", () => {
+    expect(run({ data: heldSeed }).shapes.some((s) => s.kind === 'path')).toBe(true);
+  });
+
+  it("'none' draws no mark and reserves no width: same shapes as without held events", () => {
+    const none = (d: DataFile): DataFile => ({
+      ...d,
+      settings: { ...d.settings, heldMark: 'none' },
+    });
+    const hidden = run({ data: none(heldSeed) });
+    expect(hidden.shapes.some((s) => s.kind === 'path')).toBe(false);
+    expect(hidden.shapes).toEqual(run({ data: none(seed) }).shapes);
   });
 });
 
