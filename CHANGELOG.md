@@ -5,6 +5,40 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-11-28 — M6 Settings and colours
+
+### Added
+
+- «Настройки» in the toolbar (SPEC 5.10): how days are selected, the weekend tint (grey, pink or
+  a custom light colour), whether held events show the ✓ mark, and whether the app opens on the
+  last year and format or on the current year in the «Год» format. Changes apply at once, are
+  saved with the data and are not undo steps; the button is disabled while read-only.
+- Day selection with a click on the first day and Shift+click on the last (SPEC 5.3), now the
+  default. The first click marks the day and shows «Shift+щелчок — последний день»; Shift+click
+  on the marked day gives a one-day event; Esc, a year or format change, or opening a dialog
+  clears the mark. Press-and-drag remains as the «Протягивание мышью» setting.
+- Colour picker (SPEC 5.4, Appendix C) in the event dialog, the exhibition form and the settings:
+  40 light shades (10 hues × 4 tints, all ten v1.1 colours among them), up to 8 recent colours,
+  and «Другой цвет…» with hue and lightness sliders limited to CIE L* 63–95, so black text stays
+  readable. Arrow keys move through the grid.
+- Unit tests: migration v1 → v2 with the real v1 fixture, settings schema, weekend fill per
+  setting, the hidden mark reserving no width, grid and slider lightness, recent colours, start
+  view, click-shift rules, store actions. E2E: click-shift flows, settings across a reload,
+  startup «current», tint and held mark in the downloaded PDF, picker by mouse and keyboard; the
+  settings dialog is in the axe and keyboard checks.
+
+### Changed
+
+- Data file schema v2 (SPEC 4.5): `settings` gains `selectionMode`, `weekendTint`, `heldMark`,
+  `startup` and `recentColors`. Existing v1 files are migrated on open (a backup of the original
+  is written first) and keep the pink weekend tint they were printed with; new data folders get
+  grey `#EFEFEF`.
+- The weekend tint is no longer a constant (`COLORS.weekendFill` removed); the layout reads it
+  from the settings, so the preview and the PDF follow it alike.
+- Drag-based e2e tests select the drag mode first; `docs/USER_GUIDE.ru.md` describes the new
+  selection, the colours and the settings (new section 7).
+- SPEC bumped to v1.2 (M6–M8).
+
 ## [1.1.0] — 2026-11-22 — Weekend tint
 
 ### Added
